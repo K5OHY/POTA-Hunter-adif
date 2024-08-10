@@ -3,26 +3,27 @@ import streamlit as st
 def clean_and_parse_log_data(log_data):
     lines = log_data.strip().split("\n")
     parsed_data = []
-
-    for line in lines:
-        # Strip the line and split by whitespace or tab
-        parts = line.strip().split()
-        
-        # Debug: print the line and its parts to see what is being parsed
-        st.write(f"Parsing line: {line}")
-        st.write(f"Parts: {parts}")
-        
-        # Check if the line contains the minimum number of parts to be valid
-        if len(parts) >= 8:
-            qso_date = parts[0].split()[0].replace("-", "")  # Extracting date
-            time_on = parts[1].replace(":", "")   # Extracting time
-            call = parts[1].strip()                          # Station call (the other operator)
-            station_callsign = parts[3].strip()              # Your call sign
-            band = parts[4].strip().lower()                  # Band, converted to lowercase
-            mode = parts[5].strip().split()[0].replace("(", "").replace(")", "")  # Mode
-            state = parts[6].split('-')[-1]                  # State
-            pota_ref = parts[7].split()[0]                   # POTA reference
-            park_name = " ".join(parts[7].split()[1:])       # Park name
+    
+    i = 0
+    while i < len(lines):
+        # Look for a line that starts with a date
+        if len(lines[i].strip().split()) == 2 and "-" in lines[i]:
+            date_time = lines[i].strip().split()
+            qso_date = date_time[0].replace("-", "")
+            time_on = date_time[1].replace(":", "")
+            
+            # The next line should be the station call sign
+            call = lines[i + 1].strip()
+            # Skip the operator's call, which is duplicated
+            i += 2
+            # The next line should be your call sign and other details
+            details = lines[i].strip().split()
+            station_callsign = details[0].strip()  # Your call sign (K5OHY)
+            band = details[1].strip().lower()  # Band
+            mode = details[2].strip().replace("(", "").replace(")", "")  # Mode
+            state = details[3].split('-')[-1]  # State (e.g., IN from US-IN)
+            pota_ref = details[4].strip()  # POTA reference
+            park_name = " ".join(details[5:])  # Park name
             
             entry = {
                 "qso_date": qso_date,
@@ -35,8 +36,26 @@ def clean_and_parse_log_data(log_data):
                 "comment": f"[POTA {pota_ref} {park_name}]",
             }
             parsed_data.append(entry)
-
+            i += 1
+        else:
+            i += 1  # Move to the next line if it's not the start of a new QSO
+    
     return parsed_data
+
+def convert_to_adif(parsed_data):
+    adif_records = []
+    for entry in parsed_data:
+        record = f"<CALL:{len(entry['call'])}>{entry['call']}"
+        record += f"<QSO_DATE:{len(entry['qso_date'])}>{entry['qso_date']}"
+        record += f"<TIME_ON:{len(entry['time_on'])}>{entry['time_on']}"
+        record += f"<BAND:{len(entry['band'])}>{entry['band']}"
+        record += f"<MODE:{len(entry['mode'])}>{entry['mode']}"
+        record += f"<STATION_CALLSIGN:{len(entry['station_callsign'])}>{entry['station_callsign']}"
+        record += f"<STATE:{len(entry['state'])}>{entry['state']}"
+        record += f"<COMMENT:{len(entry['comment'])}>{entry['comment']}"
+        record += "<EOR>\n"
+        adif_records.append(record)
+    return "\n".join(adif_records)
 
 # Streamlit app interface
 st.title("POTA Log to ADIF Converter")
