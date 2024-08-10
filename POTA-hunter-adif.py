@@ -1,43 +1,33 @@
 import streamlit as st
-import re
 
-def clean_log_data(log_data):
-    # Remove unnecessary lines and keep only relevant lines
-    cleaned_data = []
-    lines = log_data.strip().split("\n")
-    for line in lines:
-        # Check if the line contains valid log information
-        if re.search(r'\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}', line):
-            cleaned_data.append(line.strip())
-    return "\n".join(cleaned_data)
-
-def parse_log_data(log_data):
+def clean_and_parse_log_data(log_data):
     # Split the log into individual lines
     lines = log_data.strip().split("\n")
     parsed_data = []
 
-    # Regular expression pattern to extract the required fields
-    pattern = re.compile(
-        r'(?P<date>\d{4}-\d{2}-\d{2})\s+(?P<time>\d{2}:\d{2})\s+'
-        r'(?P<hunter_call>\S+)\s+(?P<activator_call>\S+)\s+'
-        r'(?P<band>\S+)\s+(?P<mode>\S+)\s+\(\S+\)\s+'
-        r'(?P<state>\S+)\s+(?P<pota_id>\S+)\s+(?P<location>.+)'
-    )
-
-    # Process each line using the regular expression
     for line in lines:
-        match = pattern.search(line)
-        if match:
+        parts = line.split()
+        if len(parts) >= 9:
+            date = parts[0]
+            time = parts[1].replace(":", "")
+            hunter_call = parts[2]
+            activator_call = parts[3]
+            band = parts[4]
+            mode = parts[5].replace("(", "").replace(")", "")
+            state = parts[6]
+            pota_id = parts[7]
+            location = " ".join(parts[8:])
+            
             entry = {
-                "date": match.group("date"),
-                "time": match.group("time").replace(":", ""),
-                "hunter_call": match.group("hunter_call"),
-                "activator_call": match.group("activator_call"),
-                "band": match.group("band"),
-                "mode": match.group("mode").replace("(", "").replace(")", ""),
-                "state": match.group("state"),
-                "pota_id": match.group("pota_id"),
-                "location": match.group("location"),
+                "date": date,
+                "time": time,
+                "hunter_call": hunter_call,
+                "activator_call": activator_call,
+                "band": band,
+                "mode": mode,
+                "state": state,
+                "pota_id": pota_id,
+                "location": location,
             }
             parsed_data.append(entry)
 
@@ -67,8 +57,7 @@ log_data = st.text_area("Hunters Log Data")
 
 if st.button("Generate ADIF"):
     if log_data:
-        cleaned_data = clean_log_data(log_data)
-        parsed_data = parse_log_data(cleaned_data)
+        parsed_data = clean_and_parse_log_data(log_data)
         if parsed_data:  # Check if any data was parsed successfully
             adif_data = convert_to_adif(parsed_data)
             st.text_area("ADIF Output", adif_data, height=300)
