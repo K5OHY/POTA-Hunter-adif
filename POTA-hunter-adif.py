@@ -17,23 +17,20 @@ def clean_and_parse_log_data(log_data):
                 # Second line with the station callsign
                 call = lines[i + 1].strip()
                 
-                # Third line with the operator's callsign (can be skipped)
-                operator = lines[i + 2].strip()
-                
+                # Skipping the third line with the operator's callsign
                 # Fourth line with the rest of the details
                 details = lines[i + 3].strip().split()
                 
-                # Check if the details line has enough parts
-                if len(details) < 6:
-                    i += 1
-                    continue
-                
+                # Extracting each detail from the details list
                 station_callsign = details[0].strip()  # Your callsign (K5OHY)
                 band = details[1].strip().lower()  # Band
                 mode = details[2].strip().replace("(", "").replace(")", "")  # Mode
-                state = details[3].split('-')[-1]  # State (e.g., IN from US-IN)
+                location = details[3].strip().upper()  # Location (e.g., US-IN)
                 pota_ref = details[4].strip()  # POTA reference
                 park_name = " ".join(details[5:])  # Park name
+                
+                # Extract the state from the location, assuming it's US-XX
+                state = location.split("-")[-1] if location.startswith("US-") else ""
                 
                 # Build the ADIF entry
                 entry = {
@@ -43,7 +40,7 @@ def clean_and_parse_log_data(log_data):
                     "station_callsign": station_callsign,
                     "band": band,
                     "mode": mode,
-                    "state": state,
+                    "state": state,  # Correctly mapped to the state field
                     "comment": f"[POTA {pota_ref} {park_name}]",
                 }
                 parsed_data.append(entry)
@@ -66,7 +63,8 @@ def convert_to_adif(parsed_data):
         record += f"<BAND:{len(entry['band'])}>{entry['band']}"
         record += f"<MODE:{len(entry['mode'])}>{entry['mode']}"
         record += f"<STATION_CALLSIGN:{len(entry['station_callsign'])}>{entry['station_callsign']}"
-        record += f"<STATE:{len(entry['state'])}>{entry['state']}"
+        if entry['state']:
+            record += f"<STATE:{len(entry['state'])}>{entry['state']}"
         record += f"<COMMENT:{len(entry['comment'])}>{entry['comment']}"
         record += "<EOR>\n"
         adif_records.append(record)
