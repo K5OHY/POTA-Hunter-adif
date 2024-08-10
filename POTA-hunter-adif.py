@@ -1,6 +1,16 @@
 import streamlit as st
 import re
 
+def clean_log_data(log_data):
+    # Remove unnecessary lines and keep only relevant lines
+    cleaned_data = []
+    lines = log_data.strip().split("\n")
+    for line in lines:
+        # Check if the line contains valid log information
+        if re.search(r'\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}', line):
+            cleaned_data.append(line.strip())
+    return "\n".join(cleaned_data)
+
 def parse_log_data(log_data):
     # Split the log into individual lines
     lines = log_data.strip().split("\n")
@@ -57,7 +67,8 @@ log_data = st.text_area("Hunters Log Data")
 
 if st.button("Generate ADIF"):
     if log_data:
-        parsed_data = parse_log_data(log_data)
+        cleaned_data = clean_log_data(log_data)
+        parsed_data = parse_log_data(cleaned_data)
         if parsed_data:  # Check if any data was parsed successfully
             adif_data = convert_to_adif(parsed_data)
             st.text_area("ADIF Output", adif_data, height=300)
