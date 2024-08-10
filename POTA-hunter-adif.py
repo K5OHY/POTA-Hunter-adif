@@ -6,29 +6,28 @@ def clean_and_parse_log_data(log_data):
 
     for line in lines:
         # Strip the line and split by whitespace
-        parts = line.strip().split()
+        parts = line.strip().split("\t")  # Using tab delimiter based on your data
         
         # Check if the line contains the minimum number of parts to be valid
         if len(parts) >= 8:
-            date_time = f"{parts[0]} {parts[1]}"
-            qso_date = parts[0].replace("-", "")
-            time_on = parts[1].replace(":", "")
-            station_call = parts[2]
-            worked_call = parts[3]  # Your call sign, K5OHY
-            band = parts[4].lower()  # ADIF uses lowercase for band
-            mode = parts[5].replace("(", "").replace(")", "")  # Remove parentheses around mode
-            location_state = parts[6].split('-')[-1]  # Extract state (e.g., IN from US-IN)
-            pota_ref = parts[7]
-            park_name = " ".join(parts[8:])
+            qso_date = parts[0].split()[0].replace("-", "")  # Extracting date
+            time_on = parts[0].split()[1].replace(":", "")   # Extracting time
+            call = parts[1].strip()                          # Station call (the other operator)
+            station_callsign = parts[3].strip()              # Your call sign
+            band = parts[4].strip().lower()                  # Band, converted to lowercase
+            mode = parts[5].strip().split()[0].replace("(", "").replace(")", "")  # Mode
+            state = parts[6].split('-')[-1]                  # State
+            pota_ref = parts[7].split()[0]                   # POTA reference
+            park_name = " ".join(parts[7].split()[1:])       # Park name
             
             entry = {
                 "qso_date": qso_date,
                 "time_on": time_on,
-                "call": station_call,
-                "station_callsign": worked_call,
+                "call": call,
+                "station_callsign": station_callsign,
                 "band": band,
                 "mode": mode,
-                "state": location_state,
+                "state": state,
                 "comment": f"[POTA {pota_ref} {park_name}]",
             }
             parsed_data.append(entry)
