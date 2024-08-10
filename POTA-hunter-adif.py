@@ -6,29 +6,28 @@ def clean_and_parse_log_data(log_data):
     parsed_data = []
 
     for line in lines:
-        parts = line.split()
-        if len(parts) >= 9:
-            date = parts[0].replace("-", "")
-            time = parts[1].replace(":", "")
-            station_call = parts[2]
-            worked_call = parts[3]  # This is your call sign, K5OHY
-            band = parts[4]
-            mode = parts[5].replace("(", "").replace(")", "")
-            state = parts[6].split('-')[-1]  # Extract state (TN)
-            pota_ref = parts[7]
-            park_name = " ".join(parts[8:])
+        parts = line.split("\t")
+        if len(parts) >= 8:
+            date_time = parts[0].strip()
+            qso_date = date_time.split()[0].replace("-", "")
+            time_on = date_time.split()[1].replace(":", "")
+            station_call = parts[1].strip()  # Call sign of the other operator
+            worked_call = parts[3].strip()  # Your call sign, K5OHY
+            band = parts[4].strip().lower()  # ADIF uses lowercase for band
+            mode = parts[5].strip().split()[0]  # Only get the mode part
+            location_state = parts[6].strip().split('-')[-1]  # Extract state (IN)
+            pota_ref = parts[7].strip().split()[0]  # POTA reference ID
+            park_name = " ".join(parts[7].strip().split()[1:])  # Park name
             
             entry = {
-                "qso_date": date,
-                "time_on": time,
-                "time_off": time,  # Assuming start and end times are the same
+                "qso_date": qso_date,
+                "time_on": time_on,
                 "call": station_call,
                 "station_callsign": worked_call,
-                "band": band.lower(),  # ADIF uses lowercase for band
+                "band": band,
                 "mode": mode,
-                "state": state,
-                "my_state": state,  # Assuming same state for my location
-                "comment": f"[POTA {pota_ref} {state} {park_name}]",
+                "state": location_state,
+                "comment": f"[POTA {pota_ref} {park_name}]",
             }
             parsed_data.append(entry)
 
@@ -40,12 +39,10 @@ def convert_to_adif(parsed_data):
         record = f"<CALL:{len(entry['call'])}>{entry['call']}"
         record += f"<QSO_DATE:{len(entry['qso_date'])}>{entry['qso_date']}"
         record += f"<TIME_ON:{len(entry['time_on'])}>{entry['time_on']}"
-        record += f"<TIME_OFF:{len(entry['time_off'])}>{entry['time_off']}"
         record += f"<BAND:{len(entry['band'])}>{entry['band']}"
         record += f"<MODE:{len(entry['mode'])}>{entry['mode']}"
         record += f"<STATION_CALLSIGN:{len(entry['station_callsign'])}>{entry['station_callsign']}"
         record += f"<STATE:{len(entry['state'])}>{entry['state']}"
-        record += f"<MY_STATE:{len(entry['my_state'])}>{entry['my_state']}"
         record += f"<COMMENT:{len(entry['comment'])}>{entry['comment']}"
         record += "<EOR>\n"
         adif_records.append(record)
