@@ -10,24 +10,24 @@ def clean_and_parse_log_data(log_data):
         if len(parts) >= 9:
             date = parts[0].replace("-", "")
             time = parts[1].replace(":", "")
-            hunter_call = parts[2]
-            activator_call = parts[3]
+            station_call = parts[2]
+            worked_call = parts[3]  # This is your call sign, K5OHY
             band = parts[4]
             mode = parts[5].replace("(", "").replace(")", "")
-            state = parts[6]
-            pota_id = parts[7]
-            location = " ".join(parts[8:])
+            location_state = parts[6]
+            pota_ref = parts[7]
+            park_name = " ".join(parts[8:])
             
             entry = {
                 "qso_date": date,
                 "time_on": time,
-                "station_callsign": hunter_call,
-                "call": activator_call,
+                "station_callsign": station_call,
+                "call": worked_call,
                 "band": band,
                 "mode": mode,
-                "my_state": state,
-                "my_sig_info": pota_id,
-                "comment": location,  # This field can store additional comments like location
+                "my_state": location_state,
+                "my_sig_info": pota_ref,
+                "comment": park_name,  # This field can store additional comments like the park name
             }
             parsed_data.append(entry)
 
