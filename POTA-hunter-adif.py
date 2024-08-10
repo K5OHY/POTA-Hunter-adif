@@ -14,20 +14,21 @@ def clean_and_parse_log_data(log_data):
             worked_call = parts[3]  # This is your call sign, K5OHY
             band = parts[4]
             mode = parts[5].replace("(", "").replace(")", "")
-            location_state = parts[6]
+            state = parts[6].split('-')[-1]  # Extract state (TN)
             pota_ref = parts[7]
             park_name = " ".join(parts[8:])
             
             entry = {
                 "qso_date": date,
                 "time_on": time,
-                "station_callsign": station_call,
-                "call": worked_call,
-                "band": band,
+                "time_off": time,  # Assuming start and end times are the same
+                "call": station_call,
+                "station_callsign": worked_call,
+                "band": band.lower(),  # ADIF uses lowercase for band
                 "mode": mode,
-                "my_state": location_state,
-                "my_sig_info": pota_ref,
-                "comment": park_name,  # This field can store additional comments like the park name
+                "state": state,
+                "my_state": state,  # Assuming same state for my location
+                "comment": f"[POTA {pota_ref} {state} {park_name}]",
             }
             parsed_data.append(entry)
 
@@ -39,11 +40,12 @@ def convert_to_adif(parsed_data):
         record = f"<CALL:{len(entry['call'])}>{entry['call']}"
         record += f"<QSO_DATE:{len(entry['qso_date'])}>{entry['qso_date']}"
         record += f"<TIME_ON:{len(entry['time_on'])}>{entry['time_on']}"
+        record += f"<TIME_OFF:{len(entry['time_off'])}>{entry['time_off']}"
         record += f"<BAND:{len(entry['band'])}>{entry['band']}"
         record += f"<MODE:{len(entry['mode'])}>{entry['mode']}"
         record += f"<STATION_CALLSIGN:{len(entry['station_callsign'])}>{entry['station_callsign']}"
+        record += f"<STATE:{len(entry['state'])}>{entry['state']}"
         record += f"<MY_STATE:{len(entry['my_state'])}>{entry['my_state']}"
-        record += f"<MY_SIG_INFO:{len(entry['my_sig_info'])}>{entry['my_sig_info']}"
         record += f"<COMMENT:{len(entry['comment'])}>{entry['comment']}"
         record += "<EOR>\n"
         adif_records.append(record)
