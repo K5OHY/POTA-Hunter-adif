@@ -8,8 +8,9 @@ def parse_log_data(log_data):
 
     # Regular expression pattern to extract the required fields
     pattern = re.compile(
-        r'(?P<date>\d{4}-\d{2}-\d{2})\s+(?P<time>\d{2}:\d{2})\s+(?P<hunter_call>\S+)\s+'
-        r'(?P<activator_call>\S+)\s+(?P<band>\S+)\s+(?P<mode>\S+)\s+\(\S+\)\s+'
+        r'(?P<date>\d{4}-\d{2}-\d{2})\s+(?P<time>\d{2}:\d{2})\s+'
+        r'(?P<hunter_call>\S+)\s+(?P<activator_call>\S+)\s+'
+        r'(?P<band>\S+)\s+(?P<mode>\S+)\s+\(\S+\)\s+'
         r'(?P<state>\S+)\s+(?P<pota_id>\S+)\s+(?P<location>.+)'
     )
 
