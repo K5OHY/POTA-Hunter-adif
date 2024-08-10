@@ -15,11 +15,14 @@ def clean_and_parse_log_data(log_data):
                 
                 # The next line should be the station call sign
                 call = lines[i + 1].strip()
+                
                 # Skip the operator's call, which is duplicated
-                i += 2
+                operator = lines[i + 2].strip()
+                if operator == call:
+                    i += 1
                 
                 # The next line should be your call sign and other details
-                details = lines[i].strip().split()
+                details = lines[i + 3].strip().split()
                 
                 # Make sure the details line has enough parts
                 if len(details) < 6:
@@ -44,11 +47,11 @@ def clean_and_parse_log_data(log_data):
                     "comment": f"[POTA {pota_ref} {park_name}]",
                 }
                 parsed_data.append(entry)
+                i += 4  # Move to the next entry
             except IndexError:
                 # In case any index is out of range, just skip to the next line
-                pass
-            
-            i += 1
+                i += 1
+                continue
         else:
             i += 1  # Move to the next line if it's not the start of a new QSO
     
