@@ -1,23 +1,25 @@
 import streamlit as st
 
 def clean_and_parse_log_data(log_data):
-    # Split the log into individual lines
     lines = log_data.strip().split("\n")
     parsed_data = []
 
     for line in lines:
-        parts = line.split("\t")
+        # Strip the line and split by whitespace
+        parts = line.strip().split()
+        
+        # Check if the line contains the minimum number of parts to be valid
         if len(parts) >= 8:
-            date_time = parts[0].strip()
-            qso_date = date_time.split()[0].replace("-", "")
-            time_on = date_time.split()[1].replace(":", "")
-            station_call = parts[1].strip()  # Call sign of the other operator
-            worked_call = parts[3].strip()  # Your call sign, K5OHY
-            band = parts[4].strip().lower()  # ADIF uses lowercase for band
-            mode = parts[5].strip().split()[0]  # Only get the mode part
-            location_state = parts[6].strip().split('-')[-1]  # Extract state (IN)
-            pota_ref = parts[7].strip().split()[0]  # POTA reference ID
-            park_name = " ".join(parts[7].strip().split()[1:])  # Park name
+            date_time = f"{parts[0]} {parts[1]}"
+            qso_date = parts[0].replace("-", "")
+            time_on = parts[1].replace(":", "")
+            station_call = parts[2]
+            worked_call = parts[3]  # Your call sign, K5OHY
+            band = parts[4].lower()  # ADIF uses lowercase for band
+            mode = parts[5].replace("(", "").replace(")", "")  # Remove parentheses around mode
+            location_state = parts[6].split('-')[-1]  # Extract state (e.g., IN from US-IN)
+            pota_ref = parts[7]
+            park_name = " ".join(parts[8:])
             
             entry = {
                 "qso_date": qso_date,
