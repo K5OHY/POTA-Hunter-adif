@@ -6,36 +6,36 @@ def clean_and_parse_log_data(log_data):
     
     i = 0
     while i < len(lines):
-        # Look for a line that starts with a date
-        if len(lines[i].strip().split()) == 2 and "-" in lines[i]:
+        # Look for a line that starts with a date and time
+        if len(lines[i].strip().split()) == 2 and "-" in lines[i] and ":" in lines[i]:
             try:
+                # First line with date and time
                 date_time = lines[i].strip().split()
                 qso_date = date_time[0].replace("-", "")
                 time_on = date_time[1].replace(":", "")
                 
-                # The next line should be the station call sign
+                # Second line with the station callsign
                 call = lines[i + 1].strip()
                 
-                # Skip the operator's call, which is duplicated
+                # Third line with the operator's callsign (can be skipped)
                 operator = lines[i + 2].strip()
-                if operator == call:
-                    i += 1
                 
-                # The next line should be your call sign and other details
+                # Fourth line with the rest of the details
                 details = lines[i + 3].strip().split()
                 
-                # Make sure the details line has enough parts
+                # Check if the details line has enough parts
                 if len(details) < 6:
                     i += 1
                     continue
                 
-                station_callsign = details[0].strip()  # Your call sign (K5OHY)
+                station_callsign = details[0].strip()  # Your callsign (K5OHY)
                 band = details[1].strip().lower()  # Band
                 mode = details[2].strip().replace("(", "").replace(")", "")  # Mode
                 state = details[3].split('-')[-1]  # State (e.g., IN from US-IN)
                 pota_ref = details[4].strip()  # POTA reference
                 park_name = " ".join(details[5:])  # Park name
                 
+                # Build the ADIF entry
                 entry = {
                     "qso_date": qso_date,
                     "time_on": time_on,
@@ -49,7 +49,7 @@ def clean_and_parse_log_data(log_data):
                 parsed_data.append(entry)
                 i += 4  # Move to the next entry
             except IndexError:
-                # In case any index is out of range, just skip to the next line
+                # If there's any error, skip to the next line
                 i += 1
                 continue
         else:
