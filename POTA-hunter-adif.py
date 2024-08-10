@@ -9,7 +9,8 @@ def parse_log_data(log_data):
     # Regular expression pattern to extract the required fields
     pattern = re.compile(
         r'(?P<date>\d{4}-\d{2}-\d{2})\s+(?P<time>\d{2}:\d{2})\s+(?P<hunter_call>\S+)\s+'
-        r'(?P<activator_call>\S+)\s+(?P<band>\S+)\s+(?P<mode>\S+)\s+\S+\s+(?P<state>\S+)\s+(?P<pota_id>\S+)\s+(?P<location>.+)'
+        r'(?P<activator_call>\S+)\s+(?P<band>\S+)\s+(?P<mode>\S+)\s+\(\S+\)\s+'
+        r'(?P<state>\S+)\s+(?P<pota_id>\S+)\s+(?P<location>.+)'
     )
 
     # Process each line using the regular expression
@@ -42,7 +43,7 @@ def convert_to_adif(parsed_data):
         record += f"<STATION_CALLSIGN:{len(entry['hunter_call'])}>{entry['hunter_call']}"
         record += f"<MY_STATE:{len(entry['state'])}>{entry['state']}"
         record += f"<MY_SIG_INFO:{len(entry['pota_id'])}>{entry['pota_id']}"
-        record += "<EOR>"
+        record += "<EOR>\n"
         adif_records.append(record)
     return "\n".join(adif_records)
 
@@ -53,15 +54,20 @@ st.write("Paste your POTA hunters log data below:")
 
 log_data = st.text_area("Hunters Log Data")
 
-if log_data:
-    parsed_data = parse_log_data(log_data)
-    adif_data = convert_to_adif(parsed_data)
-    
-    st.text_area("ADIF Output", adif_data)
+if st.button("Generate ADIF"):
+    if log_data:
+        parsed_data = parse_log_data(log_data)
+        if parsed_data:  # Check if any data was parsed successfully
+            adif_data = convert_to_adif(parsed_data)
+            st.text_area("ADIF Output", adif_data, height=300)
 
-    st.download_button(
-        label="Download ADIF",
-        data=adif_data,
-        file_name="pota_log.adi",
-        mime="text/plain",
-    )
+            st.download_button(
+                label="Download ADIF",
+                data=adif_data,
+                file_name="pota_log.adi",
+                mime="text/plain",
+            )
+        else:
+            st.warning("No valid log data was found. Please check the format of your log.")
+    else:
+        st.warning("Please paste the log data before generating the ADIF file.")
