@@ -8,7 +8,7 @@ def clean_and_parse_log_data(log_data):
     for line in lines:
         parts = line.split()
         if len(parts) >= 9:
-            date = parts[0]
+            date = parts[0].replace("-", "")
             time = parts[1].replace(":", "")
             hunter_call = parts[2]
             activator_call = parts[3]
@@ -19,15 +19,15 @@ def clean_and_parse_log_data(log_data):
             location = " ".join(parts[8:])
             
             entry = {
-                "date": date,
-                "time": time,
-                "hunter_call": hunter_call,
-                "activator_call": activator_call,
+                "qso_date": date,
+                "time_on": time,
+                "station_callsign": hunter_call,
+                "call": activator_call,
                 "band": band,
                 "mode": mode,
-                "state": state,
-                "pota_id": pota_id,
-                "location": location,
+                "my_state": state,
+                "my_sig_info": pota_id,
+                "comment": location,  # This field can store additional comments like location
             }
             parsed_data.append(entry)
 
@@ -36,14 +36,15 @@ def clean_and_parse_log_data(log_data):
 def convert_to_adif(parsed_data):
     adif_records = []
     for entry in parsed_data:
-        record = f"<CALL:{len(entry['activator_call'])}>{entry['activator_call']}"
-        record += f"<QSO_DATE:{len(entry['date'])}>{entry['date'].replace('-', '')}"
-        record += f"<TIME_ON:{len(entry['time'])}>{entry['time']}"
+        record = f"<CALL:{len(entry['call'])}>{entry['call']}"
+        record += f"<QSO_DATE:{len(entry['qso_date'])}>{entry['qso_date']}"
+        record += f"<TIME_ON:{len(entry['time_on'])}>{entry['time_on']}"
         record += f"<BAND:{len(entry['band'])}>{entry['band']}"
         record += f"<MODE:{len(entry['mode'])}>{entry['mode']}"
-        record += f"<STATION_CALLSIGN:{len(entry['hunter_call'])}>{entry['hunter_call']}"
-        record += f"<MY_STATE:{len(entry['state'])}>{entry['state']}"
-        record += f"<MY_SIG_INFO:{len(entry['pota_id'])}>{entry['pota_id']}"
+        record += f"<STATION_CALLSIGN:{len(entry['station_callsign'])}>{entry['station_callsign']}"
+        record += f"<MY_STATE:{len(entry['my_state'])}>{entry['my_state']}"
+        record += f"<MY_SIG_INFO:{len(entry['my_sig_info'])}>{entry['my_sig_info']}"
+        record += f"<COMMENT:{len(entry['comment'])}>{entry['comment']}"
         record += "<EOR>\n"
         adif_records.append(record)
     return "\n".join(adif_records)
