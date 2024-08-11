@@ -11,7 +11,6 @@ def parse_adif(adif_data):
     for line in lines:
         if line.startswith('<EOR>'):
             if 'CALL' in current_qso and 'QSO_DATE' in current_qso and 'TIME_ON' in current_qso:
-                # Extract relevant fields
                 qso_entry = {
                     'call': current_qso.get('CALL', '').strip().lower(),
                     'qso_date': current_qso.get('QSO_DATE', '').strip(),
@@ -74,19 +73,27 @@ def clean_and_parse_log_data(log_data):
 
 # Function to check if a QSO is a duplicate
 def is_duplicate_qso(new_qso, existing_qsos):
-    new_time = datetime.datetime.strptime(f"{new_qso['qso_date']} {new_qso['time_on']}", "%Y%m%d %H%M")
+    new_time_str = f"{new_qso['qso_date']} {new_qso['time_on']}"
+    new_time = datetime.datetime.strptime(new_time_str, "%Y%m%d %H%M")
+    st.write(f"Checking for duplicates against: {new_qso}")
 
     for existing_qso in existing_qsos:
         if (new_qso['call'] == existing_qso['call'] and
             new_qso['band'] == existing_qso['band'] and
             new_qso['mode'] == existing_qso['mode']):
             
-            existing_time = datetime.datetime.strptime(f"{existing_qso['qso_date']} {existing_qso['time_on']}", "%Y%m%d %H%M")
+            existing_time_str = f"{existing_qso['qso_date']} {existing_qso['time_on']}"
+            existing_time = datetime.datetime.strptime(existing_time_str, "%Y%m%d %H%M")
             time_difference = abs((new_time - existing_time).total_seconds())
 
+            st.write(f"Comparing with existing QSO: {existing_qso}")
+            st.write(f"Time difference: {time_difference} seconds")
+
             if time_difference <= 1200:  # within 20 minutes
+                st.write("Duplicate found!")
                 return True
 
+    st.write("No duplicate found.")
     return False
 
 # Convert the parsed data into ADIF format
