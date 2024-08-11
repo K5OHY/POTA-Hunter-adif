@@ -4,6 +4,7 @@ import pandas as pd
 
 # Function to parse a single line from the hunter log
 def parse_hunter_log_line(line):
+    # Improved pattern to match QSO lines more accurately
     pattern = r"(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(.*)"
     match = re.match(pattern, line.strip())
     if match:
@@ -22,7 +23,9 @@ def parse_hunter_log_line(line):
             "comment": comment
         }
     else:
-        st.error(f"Error parsing line: {line}")
+        # Debugging: Only report the line if it doesn't start with 'Hunter'
+        if not line.startswith('Hunter'):
+            st.error(f"Error parsing line: {line}")
         return None
 
 # Function to convert parsed QSOs to ADIF format
@@ -37,7 +40,6 @@ def convert_to_adif(parsed_qsos):
         adif_entry += f"<comment:{len(qso['comment'])}>{qso['comment']}"
         adif_entry += "<eor>"
         adif_qsos.append(adif_entry)
-        st.text(f"ADIF Entry Created: {adif_entry}")  # Debugging: Show each ADIF entry
     return adif_qsos
 
 # Function to filter out duplicates
@@ -54,7 +56,6 @@ def filter_duplicates(parsed_qsos):
                                 pd.to_datetime(f"{existing_qso['qso_date']} {existing_qso['qso_time']}"))
                 if time_diff.total_seconds() / 60 <= 10:
                     is_duplicate = True
-                    st.warning(f"Duplicate QSO found: {qso}")  # Debugging: Show duplicates
                     break
         if not is_duplicate:
             filtered_qsos.append(qso)
@@ -73,7 +74,11 @@ pasted_log = st.text_area("Paste your hunter log here:")
 if st.button("Process Log"):
     # Split pasted log into lines and parse each line
     lines = pasted_log.strip().splitlines()
-    parsed_qsos = [parse_hunter_log_line(line) for line in lines if parse_hunter_log_line(line)]
+    
+    # Filter out non-QSO lines before parsing
+    qso_lines = [line for line in lines if re.match(r"^\d{4}-\d{2}-\d{2}", line)]
+    
+    parsed_qsos = [parse_hunter_log_line(line) for line in qso_lines if parse_hunter_log_line(line)]
     
     # Convert to ADIF
     adif_qsos = convert_to_adif(parsed_qsos)
