@@ -25,16 +25,24 @@ def parse_adif_file(adif_content):
     return existing_qsos
 
 def is_duplicate(new_qso, existing_qsos):
-    new_time = datetime.strptime(new_qso['QSO_DATE'] + new_qso['TIME_ON'], '%Y%m%d%H%M')
+    try:
+        new_time = datetime.strptime(new_qso['QSO_DATE'] + new_qso['TIME_ON'], '%Y%m%d%H%M')
+    except ValueError as e:
+        st.error(f"Error parsing date and time for QSO: {new_qso['CALL']} - {e}")
+        return False
 
     for qso in existing_qsos:
         if (qso['CALL'] == new_qso['CALL'] and 
             qso['BAND'] == new_qso['BAND'] and 
             qso['MODE'] == new_qso['MODE']):
-            existing_time = datetime.strptime(qso['QSO_DATE'] + qso['TIME_ON'], '%Y%m%d%H%M')
-            time_diff = abs((new_time - existing_time).total_seconds())
-            if time_diff <= 600:  # 10 minutes
-                return True
+            try:
+                existing_time = datetime.strptime(qso['QSO_DATE'] + qso['TIME_ON'], '%Y%m%d%H%M')
+                time_diff = abs((new_time - existing_time).total_seconds())
+                if time_diff <= 600:  # 10 minutes
+                    return True
+            except ValueError as e:
+                st.error(f"Error parsing date and time for existing QSO: {qso['CALL']} - {e}")
+                continue
     return False
 
 def filter_duplicates(parsed_data, existing_qsos):
@@ -65,18 +73,30 @@ if st.button("Convert to ADIF"):
         for line in hunter_log_lines:
             parts = line.split()
             if len(parts) > 8:  # Ensure that the line has the necessary parts
-                date, time, call, operator, station_callsign, band, mode, location, park, *comment_parts = parts
-                comment = ' '.join(comment_parts)
-                qso_data = {
-                    'CALL': call,
-                    'QSO_DATE': date.replace('-', ''),
-                    'TIME_ON': time.replace(':', ''),
-                    'BAND': band.lower(),
-                    'MODE': mode.split('(')[0].strip(),
-                    'STATION_CALLSIGN': station_callsign,
-                    'COMMENT': f"[POTA {park} {location}] {comment}"
-                }
-                parsed_data.append(qso_data)
+                try:
+                    date = parts[0]
+                    time = parts[1]
+                    call = parts[2]
+                    station_callsign = parts[4]
+                    band = parts[5]
+                    mode = parts[6].split('(')[0].strip()
+                    location = parts[7]
+                    park = parts[8]
+                    comment = ' '.join(parts[9:])
+                    
+                    qso_data = {
+                        'CALL': call,
+                        'QSO_DATE': date.replace('-', ''),
+                        'TIME_ON': time.replace(':', ''),
+                        'BAND': band.lower(),
+                        'MODE': mode,
+                        'STATION_CALLSIGN': station_callsign,
+                        'COMMENT': f"[POTA {park} {location}] {comment}"
+                    }
+                    parsed_data.append(qso_data)
+                except IndexError as e:
+                    st.error(f"Error parsing line: {line} - {e}")
+                    continue
         
         unique_qsos = filter_duplicates(parsed_data, existing_qsos)
         
