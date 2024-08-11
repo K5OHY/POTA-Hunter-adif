@@ -46,10 +46,6 @@ def clean_and_parse_log_data(log_data):
                 station_callsign = details[0].strip().lower()
                 band = details[1].strip().lower()
                 mode = details[2].strip().replace("(", "").replace(")", "").lower()
-                location = details[3].strip().upper()
-                pota_ref = details[4].strip()
-                park_name = " ".join(details[5:])
-                state = location.split("-")[-1] if location.startswith("US-") else ""
 
                 entry = {
                     "qso_date": qso_date,
@@ -58,8 +54,6 @@ def clean_and_parse_log_data(log_data):
                     "station_callsign": station_callsign,
                     "band": band,
                     "mode": mode,
-                    "state": state,
-                    "comment": f"[POTA {pota_ref} {park_name}]",
                 }
                 parsed_data.append(entry)
                 i += 4
@@ -76,18 +70,14 @@ def is_duplicate_qso(new_qso, existing_qsos):
     new_time = datetime.datetime.strptime(f"{new_qso['qso_date']} {new_qso['time_on']}", "%Y%m%d %H%M")
     
     for existing_qso in existing_qsos:
-        # Print out each field being compared
-        st.write(f"Comparing new QSO:")
-        st.write(f"CALL: {new_qso['call']} vs {existing_qso.get('CALL')}")
-        st.write(f"QSO_DATE: {new_qso['qso_date']} vs {existing_qso.get('QSO_DATE')}")
-        st.write(f"BAND: {new_qso['band']} vs {existing_qso.get('BAND')}")
-        st.write(f"MODE: {new_qso['mode']} vs {existing_qso.get('MODE')}")
-        st.write(f"STATION_CALLSIGN: {new_qso['station_callsign']} vs {existing_qso.get('STATION_CALLSIGN')}")
-
+        st.write(f"Comparing new QSO: {new_qso}")
+        st.write(f"With existing QSO: {existing_qso}")
+        
         if (new_qso['call'] == existing_qso.get('CALL') and
             new_qso['qso_date'] == existing_qso.get('QSO_DATE') and
             new_qso['band'] == existing_qso.get('BAND') and
-            new_qso['mode'] == existing_qso.get('MODE')):
+            new_qso['mode'] == existing_qso.get('MODE') and
+            new_qso['station_callsign'] == existing_qso.get('STATION_CALLSIGN')):
             
             existing_time = datetime.datetime.strptime(f"{existing_qso['QSO_DATE']} {existing_qso['TIME_ON']}", "%Y%m%d %H%M")
             time_difference = abs((new_time - existing_time).total_seconds())
@@ -112,9 +102,6 @@ def convert_to_adif(parsed_data):
             f"<MODE:{len(entry['mode'])}>{entry['mode']}"
             f"<STATION_CALLSIGN:{len(entry['station_callsign'])}>{entry['station_callsign']}"
         )
-        if entry['state']:
-            record += f"<STATE:{len(entry['state'])}>{entry['state']}"
-        record += f"<COMMENT:{len(entry['comment'])}>{entry['comment']}"
         record += "<EOR>\n"
         adif_records.append(record)
     return "\n".join(adif_records)
