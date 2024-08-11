@@ -83,7 +83,7 @@ if st.button("Convert to ADIF"):
         
         for line in hunter_log_lines:
             parts = line.split('\t')
-            if len(parts) > 8:  # Ensure that the line has the necessary parts
+            if len(parts) >= 4:  # Adjusted to ensure the line has the necessary parts
                 try:
                     datetime_str = parts[0].strip()
                     datetime_obj = datetime.strptime(datetime_str, '%Y-%m-%d %H:%M')
@@ -91,7 +91,6 @@ if st.button("Convert to ADIF"):
                     time = datetime_obj.strftime('%H%M')
                     
                     call = parts[2].strip()
-                    station_callsign = parts[3].strip()
                     band = parts[4].strip().lower()
                     
                     qso_data = {
@@ -99,7 +98,6 @@ if st.button("Convert to ADIF"):
                         'QSO_DATE': date,
                         'TIME_ON': time,
                         'BAND': band,
-                        'STATION_CALLSIGN': station_callsign
                     }
                     parsed_data.append(qso_data)
                 except (IndexError, ValueError) as e:
