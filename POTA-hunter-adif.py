@@ -77,9 +77,9 @@ def is_duplicate_qso(new_qso, existing_qsos):
     
     for existing_qso in existing_qsos:
         if (new_qso['call'] == existing_qso.get('CALL') and
+            new_qso['qso_date'] == existing_qso.get('QSO_DATE') and
             new_qso['band'] == existing_qso.get('BAND') and
-            new_qso['mode'] == existing_qso.get('MODE') and
-            new_qso['station_callsign'] == existing_qso.get('STATION_CALLSIGN')):
+            new_qso['mode'] == existing_qso.get('MODE')):
             
             existing_time = datetime.datetime.strptime(f"{existing_qso['QSO_DATE']} {existing_qso['TIME_ON']}", "%Y%m%d %H%M")
             time_difference = abs((new_time - existing_time).total_seconds())
