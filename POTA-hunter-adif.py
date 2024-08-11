@@ -78,16 +78,18 @@ def is_duplicate_qso(new_qso, existing_qsos):
     st.write(f"Checking for duplicates against: {new_qso}")
 
     for existing_qso in existing_qsos:
-        if (new_qso['call'] == existing_qso['call'] and
-            new_qso['band'] == existing_qso['band'] and
-            new_qso['mode'] == existing_qso['mode']):
-            
+        st.write(f"Comparing with existing QSO: {existing_qso}")
+        call_match = new_qso['call'] == existing_qso['call']
+        band_match = new_qso['band'] == existing_qso['band']
+        mode_match = new_qso['mode'] == existing_qso['mode']
+        st.write(f"CALL match: {call_match}, BAND match: {band_match}, MODE match: {mode_match}")
+
+        if call_match and band_match and mode_match:
             existing_time_str = f"{existing_qso['qso_date']} {existing_qso['time_on']}"
             existing_time = datetime.datetime.strptime(existing_time_str, "%Y%m%d %H%M")
             time_difference = abs((new_time - existing_time).total_seconds())
 
-            st.write(f"Comparing with existing QSO: {existing_qso}")
-            st.write(f"Time difference: {time_difference} seconds")
+            st.write(f"Time difference: {time_difference} seconds (threshold: 1200 seconds)")
 
             if time_difference <= 1200:  # within 20 minutes
                 st.write("Duplicate found!")
