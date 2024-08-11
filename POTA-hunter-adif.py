@@ -70,9 +70,15 @@ def is_duplicate_qso(new_qso, existing_qsos):
     new_time = datetime.datetime.strptime(f"{new_qso['qso_date']} {new_qso['time_on']}", "%Y%m%d %H%M")
     
     for existing_qso in existing_qsos:
-        st.write(f"Comparing new QSO: {new_qso}")
-        st.write(f"With existing QSO: {existing_qso}")
-        
+        # Print out the field values with lengths and repr to detect subtle issues
+        st.write(f"Comparing new QSO:")
+        st.write(f"CALL: '{new_qso['call']}' (len: {len(new_qso['call'])}) vs '{existing_qso.get('CALL')}' (len: {len(existing_qso.get('CALL'))})")
+        st.write(f"QSO_DATE: '{new_qso['qso_date']}' (len: {len(new_qso['qso_date'])}) vs '{existing_qso.get('QSO_DATE')}' (len: {len(existing_qso.get('QSO_DATE'))})")
+        st.write(f"BAND: '{new_qso['band']}' (len: {len(new_qso['band'])}) vs '{existing_qso.get('BAND')}' (len: {len(existing_qso.get('BAND'))})")
+        st.write(f"MODE: '{new_qso['mode']}' (len: {len(new_qso['mode'])}) vs '{existing_qso.get('MODE')}' (len: {len(existing_qso.get('MODE'))})")
+        st.write(f"STATION_CALLSIGN: '{new_qso['station_callsign']}' (len: {len(new_qso['station_callsign'])}) vs '{existing_qso.get('STATION_CALLSIGN')}' (len: {len(existing_qso.get('STATION_CALLSIGN'))})")
+        st.write(f"TIME_ON: '{new_qso['time_on']}' (len: {len(new_qso['time_on'])}) vs '{existing_qso.get('TIME_ON')}' (len: {len(existing_qso.get('TIME_ON'))})")
+
         if (new_qso['call'] == existing_qso.get('CALL') and
             new_qso['qso_date'] == existing_qso.get('QSO_DATE') and
             new_qso['band'] == existing_qso.get('BAND') and
