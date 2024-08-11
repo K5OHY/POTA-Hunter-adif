@@ -84,6 +84,9 @@ def is_duplicate_qso(new_qso, existing_qsos):
             existing_time = datetime.datetime.strptime(f"{existing_qso['QSO_DATE']} {existing_qso['TIME_ON']}", "%Y%m%d %H%M")
             time_difference = abs((new_time - existing_time).total_seconds())
             
+            st.write(f"Comparing with: {existing_qso}")
+            st.write(f"Time difference: {time_difference} seconds")
+
             if time_difference <= 1200:  # within 20 minutes
                 st.write(f"Duplicate found: {new_qso} is a duplicate of {existing_qso}")
                 return True
@@ -105,48 +108,4 @@ def convert_to_adif(parsed_data):
         if entry['state']:
             record += f"<STATE:{len(entry['state'])}>{entry['state']}"
         record += f"<COMMENT:{len(entry['comment'])}>{entry['comment']}"
-        record += "<EOR>\n"
-        adif_records.append(record)
-    return "\n".join(adif_records)
-
-# Streamlit app interface
-st.title("POTA Log to ADIF Converter with Duplicate Removal")
-
-st.write("Paste your POTA hunters log data below:")
-
-log_data = st.text_area("Hunters Log Data", height=300)
-
-uploaded_adif = st.file_uploader("Upload your existing QRZ ADIF file", type="adi")
-
-if st.button("Generate ADIF"):
-    if log_data:
-        parsed_data = clean_and_parse_log_data(log_data)
-        
-        existing_qsos = []
-        if uploaded_adif:
-            try:
-                adif_content = StringIO(uploaded_adif.getvalue().decode("utf-8", errors='replace')).read()
-                existing_qsos = parse_adif(adif_content)
-            except UnicodeDecodeError:
-                st.error("There was an issue decoding the ADIF file. Please ensure it is encoded in UTF-8.")
-                st.stop()
-        
-        # Filter out duplicates
-        filtered_data = [
-            qso for qso in parsed_data if not is_duplicate_qso(qso, existing_qsos)
-        ]
-        
-        if filtered_data:  # Check if any data was parsed successfully
-            adif_data = convert_to_adif(filtered_data)
-            st.text_area("ADIF Output", adif_data, height=300)
-
-            st.download_button(
-                label="Download ADIF",
-                data=adif_data,
-                file_name="pota_log_filtered.adi",
-                mime="text/plain",
-            )
-        else:
-            st.warning("No valid log data was found or all were duplicates.")
-    else:
-        st.warning("Please paste the log data before generating the ADIF file.")
+        record += "<EOR>\
