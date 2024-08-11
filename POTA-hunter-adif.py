@@ -1,29 +1,51 @@
 import streamlit as st
-import re
 
 # Function to parse a single line from the hunter log
 def parse_hunter_log_line(line):
-    # Pattern to match QSO lines
-    pattern = r"(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(.*)"
-    match = re.match(pattern, line.strip())
+    # Split the line by tabs and spaces
+    parts = line.strip().split()
     
-    if match:
-        qso_date = match.group(1)
-        qso_time = match.group(2)
-        station_worked = match.group(3)
-        band = match.group(5)
-        mode = match.group(6).split(" ")[0]  # Take only the first part before the space
-        comment = f"[POTA {match.group(7)} {match.group(8)}]"
+    if len(parts) >= 8:
+        qso_date = parts[0]  # Date
+        qso_time = parts[1]  # Time
+        station = parts[2]  # Station
+        operator = parts[3]  # Operator
+        worked = parts[4]  # Worked station
+        band = parts[5]  # Band
+        mode = parts[6].split(" ")[0]  # Mode (only first part before space)
+        location = parts[7]  # Location
+        park_info = " ".join(parts[8:])  # Park info and any trailing description
+        comment = f"[POTA {location} {park_info}]"
+        
+        # Return a dictionary representing the ADIF fields
         return {
-            "qso_date": qso_date,
-            "qso_time": qso_time,
-            "station_worked": station_worked,
+            "qso_date": qso_date.replace("-", ""),
+            "qso_time": qso_time.replace(":", ""),
+            "station": station,
+            "operator": operator,
+            "worked": worked,
             "band": band,
             "mode": mode,
             "comment": comment
         }
     else:
         return None
+
+# Function to convert parsed QSOs to ADIF format
+def convert_to_adif(parsed_qsos):
+    adif_entries = []
+    for qso in parsed_qsos:
+        adif_entry = (
+            f"<qso_date:{len(qso['qso_date'])}>{qso['qso_date']} "
+            f"<time_on:{len(qso['qso_time'])}>{qso['qso_time']} "
+            f"<call:{len(qso['worked'])}>{qso['worked']} "
+            f"<band:{len(qso['band'])}>{qso['band']} "
+            f"<mode:{len(qso['mode'])}>{qso['mode']} "
+            f"<comment:{len(qso['comment'])}>{qso['comment']} "
+            "<eor>"
+        )
+        adif_entries.append(adif_entry)
+    return adif_entries
 
 # Streamlit app layout
 st.title("Hunter Log ADIF Converter")
@@ -39,32 +61,15 @@ if st.button("Process Log"):
     # Split pasted log into lines and parse each line
     lines = pasted_log.strip().splitlines()
 
-    # Debug: Show all lines
-    st.write("Lines in pasted log:")
-    st.write(lines)
-
     # Process each line
     for line in lines:
-        st.write(f"Processing line: {line}")
         parsed_qso = parse_hunter_log_line(line)
         if parsed_qso:
-            st.write(f"Parsed QSO: {parsed_qso}")
             parsed_qsos.append(parsed_qso)
-        else:
-            st.write(f"Failed to parse line: {line}")
-    
-    # Debugging: Display parsed QSOs
-    if parsed_qsos:
-        st.write("Parsed QSOs:")
-        st.write(parsed_qsos)
-    else:
-        st.write("No QSOs were parsed.")
 
-    # Convert to ADIF if QSOs were parsed
+    # Convert parsed QSOs to ADIF
     if parsed_qsos:
-        # (Convert and filter logic here, similar to before)
         final_adif = "\n".join(convert_to_adif(parsed_qsos))
-        st.text_area("Generated ADIF File", final_adif, height=300)
-        st.download_button("Download ADIF", final_adif, file_name="hunter_log.adif")
+        st.text_area("Generated ADIF File", final_adif)
     else:
-        st.write("No ADIF content generated.")
+        st.write("No valid QSOs found in the pasted log.")
