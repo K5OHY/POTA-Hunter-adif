@@ -4,7 +4,7 @@ import pandas as pd
 
 # Function to parse a single line from the hunter log
 def parse_hunter_log_line(line):
-    # Pattern to match QSO lines
+    # Pattern to match lines with the QSO data
     pattern = r"(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(.*)"
     match = re.match(pattern, line.strip())
     if match:
@@ -23,7 +23,6 @@ def parse_hunter_log_line(line):
             "comment": comment
         }
     else:
-        st.error(f"Error parsing line: {line}")
         return None
 
 # Function to convert parsed QSOs to ADIF format
@@ -73,7 +72,7 @@ if st.button("Process Log"):
     # Split pasted log into lines and parse each line
     lines = pasted_log.strip().splitlines()
     
-    # Attempt to parse each line
+    # Attempt to parse each line, ignoring non-QSO lines
     parsed_qsos = [parse_hunter_log_line(line) for line in lines if parse_hunter_log_line(line)]
     
     # Debugging: Display parsed QSOs
