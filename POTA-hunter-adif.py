@@ -1,18 +1,29 @@
 import streamlit as st
 import datetime
-from dateutil import parser as date_parser
 
 # Utility function to parse ADIF content
 def parse_adif_file(adif_content):
     # Simple parser assuming each QSO is on a separate line
     qsos = []
     for line in adif_content.splitlines():
+        qso = {}
         if '<call:' in line.lower():
-            qso = {}
-            qso['CALL'] = line.split('<call:')[1].split('>')[1].strip()
-            qso['BAND'] = line.split('<band:')[1].split('>')[1].strip()
-            qso['QSO_DATE'] = line.split('<qso_date:')[1].split('>')[1].strip()
-            qso['TIME_ON'] = line.split('<time_on:')[1].split('>')[1].strip()
+            try:
+                qso['CALL'] = line.split('<call:')[1].split('>')[1].strip()
+            except IndexError:
+                qso['CALL'] = ''
+            try:
+                qso['BAND'] = line.split('<band:')[1].split('>')[1].strip()
+            except IndexError:
+                qso['BAND'] = ''
+            try:
+                qso['QSO_DATE'] = line.split('<qso_date:')[1].split('>')[1].strip()
+            except IndexError:
+                qso['QSO_DATE'] = ''
+            try:
+                qso['TIME_ON'] = line.split('<time_on:')[1].split('>')[1].strip()
+            except IndexError:
+                qso['TIME_ON'] = ''
             qsos.append(qso)
     return qsos
 
