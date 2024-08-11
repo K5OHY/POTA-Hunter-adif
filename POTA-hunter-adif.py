@@ -1,6 +1,5 @@
 import streamlit as st
 import re
-import pandas as pd
 
 # Function to parse a single line from the hunter log
 def parse_hunter_log_line(line):
@@ -46,13 +45,17 @@ if st.button("Process Log"):
 
     # Process each line
     for line in lines:
-        st.write(f"Processing line: {line}")
-        parsed_qso = parse_hunter_log_line(line)
-        if parsed_qso:
-            st.write(f"Parsed QSO: {parsed_qso}")
-            parsed_qsos.append(parsed_qso)
+        # Only consider lines that have a date in the expected format at the beginning
+        if re.match(r"\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}", line.strip()):
+            st.write(f"Processing line: {line}")
+            parsed_qso = parse_hunter_log_line(line)
+            if parsed_qso:
+                st.write(f"Parsed QSO: {parsed_qso}")
+                parsed_qsos.append(parsed_qso)
+            else:
+                st.write(f"Failed to parse line: {line}")
         else:
-            st.write(f"Failed to parse line: {line}")
+            st.write(f"Ignored non-QSO line: {line}")
     
     # Debugging: Display parsed QSOs
     if parsed_qsos:
