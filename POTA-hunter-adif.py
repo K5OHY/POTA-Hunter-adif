@@ -63,6 +63,9 @@ def filter_duplicates(parsed_qsos):
 # Streamlit app layout
 st.title("Hunter Log ADIF Converter")
 
+# Initialize an empty list for parsed QSOs
+parsed_qsos = []
+
 # Text area to paste the log
 pasted_log = st.text_area("Paste your hunter log here:")
 
