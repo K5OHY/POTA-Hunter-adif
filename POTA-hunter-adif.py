@@ -19,6 +19,7 @@ def parse_adif(adif_data):
                     'mode': current_qso.get('MODE', '').strip().lower()
                 }
                 existing_qsos.append(qso_entry)
+                st.write(f"ADIF Parsed QSO: {qso_entry}")  # Debugging: Print each parsed QSO
             current_qso = {}
         else:
             parts = line.split('<')
@@ -61,6 +62,7 @@ def clean_and_parse_log_data(log_data):
                 }
 
                 parsed_data.append(qso_entry)
+                st.write(f"Log Parsed QSO: {qso_entry}")  # Debugging: Print each parsed QSO
                 i += 4
             except IndexError:
                 st.warning(f"Skipping entry due to unexpected format: {lines[i:i+4]}")
@@ -85,6 +87,11 @@ def is_duplicate_qso(new_qso, existing_qsos):
         except ValueError as e:
             st.write(f"Error parsing existing QSO time: {e}")
             continue
+
+        st.write(f"Comparing {new_qso['call']} with {existing_qso['call']}")
+        st.write(f"Band {new_qso['band']} vs {existing_qso['band']}")
+        st.write(f"Mode {new_qso['mode']} vs {existing_qso['mode']}")
+        st.write(f"Time difference: {abs((new_time - existing_time).total_seconds())} seconds")
 
         if (
             new_qso['call'] == existing_qso['call'] and
