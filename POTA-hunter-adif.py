@@ -91,15 +91,15 @@ def is_duplicate_qso(new_qso, existing_qsos):
         st.write(f"Comparing {new_qso['call']} with {existing_qso['call']}")
         st.write(f"Band {new_qso['band']} vs {existing_qso['band']}")
         st.write(f"Mode {new_qso['mode']} vs {existing_qso['mode']}")
-        st.write(f"Time difference: {abs((new_time - existing_time).total_seconds())} seconds")
+        time_difference = abs((new_time - existing_time).total_seconds()) / 60  # Convert to minutes
+        st.write(f"Time difference: {time_difference} minutes")
 
         if (
             new_qso['call'] == existing_qso['call'] and
             new_qso['band'] == existing_qso['band'] and
             new_qso['mode'] == existing_qso['mode']
         ):
-            time_difference = abs((new_time - existing_time).total_seconds())
-            if time_difference <= 1200:  # within 20 minutes
+            if time_difference <= 30:  # within 30 minutes
                 st.write(f"Duplicate found: {new_qso}")
                 return True
 
