@@ -2,22 +2,29 @@ import streamlit as st
 
 # Function to parse a single line from the hunter log
 def parse_hunter_log_line(line):
-    # Split the line by whitespace and tabs
-    parts = line.strip().split('\t')
+    # Strip leading and trailing whitespace
+    line = line.strip()
     
-    if len(parts) >= 8:
-        qso_date, qso_time = parts[0].split()
-        station = parts[1]  # Station
-        operator = parts[2]  # Operator
-        worked = parts[3]  # Worked station
-        band = parts[4]  # Band
-        mode = parts[5].split()[0]  # Mode (only first part before space)
-        location = parts[6]  # Location
-        park = parts[7]  # Park
+    # Split the line by tabs or multiple spaces
+    parts = line.split('\t')
+    
+    # Ensure we have exactly 8 parts to parse a valid QSO
+    if len(parts) == 8:
+        qso_date_time = parts[0]
+        station = parts[1]
+        operator = parts[2]
+        worked = parts[3]
+        band = parts[4].lower()  # Convert band to lowercase
+        mode = parts[5].split()[0].upper()  # Use only the first part of mode and convert to uppercase
+        location = parts[6]
+        park = parts[7]
         
+        # Parse the date and time from the first field
+        qso_date, qso_time = qso_date_time.split()
+
         # Create a comment with the location and park information
         comment = f"[POTA {location} {park}]"
-
+        
         # Return a dictionary representing the ADIF fields
         return {
             "qso_date": qso_date.replace("-", ""),
@@ -25,12 +32,12 @@ def parse_hunter_log_line(line):
             "station": station,
             "operator": operator,
             "worked": worked,
-            "band": band.lower(),
-            "mode": mode.upper(),
+            "band": band,
+            "mode": mode,
             "comment": comment
         }
-    else:
-        return None
+    
+    return None
 
 # Function to convert parsed QSOs to ADIF format
 def convert_to_adif(parsed_qsos):
@@ -64,6 +71,8 @@ if st.button("Process Log"):
 
     # Process each line
     for line in lines:
+        if "Hunter" in line or "Rows per page" in line:
+            continue
         parsed_qso = parse_hunter_log_line(line)
         if parsed_qso:
             parsed_qsos.append(parsed_qso)
