@@ -2,6 +2,7 @@ import streamlit as st
 import datetime
 from io import StringIO
 
+# Function to parse the QRZ ADIF file
 def parse_adif(adif_data):
     existing_qsos = []
     lines = adif_data.strip().splitlines()
@@ -24,6 +25,7 @@ def parse_adif(adif_data):
 
     return existing_qsos
 
+# Function to parse the pasted log data
 def clean_and_parse_log_data(log_data):
     lines = log_data.strip().split("\n")
     parsed_data = []
@@ -38,11 +40,6 @@ def clean_and_parse_log_data(log_data):
                 call = lines[i + 1].strip().lower()
                 details = lines[i + 3].strip().split()
 
-                if len(details) < 5:
-                    st.warning(f"Skipping entry due to incomplete details: {lines[i:i+4]}")
-                    i += 4
-                    continue
-                
                 station_callsign = details[0].strip().lower()
                 band = details[1].strip().lower()
                 mode = details[2].strip().replace("(", "").replace(")", "").lower()
@@ -66,28 +63,31 @@ def clean_and_parse_log_data(log_data):
     
     return parsed_data
 
+# Function to compare the new QSO with existing QSOs from the QRZ ADIF file
 def is_duplicate_qso(new_qso, existing_qsos):
     new_time = datetime.datetime.strptime(f"{new_qso['qso_date']} {new_qso['time_on']}", "%Y%m%d %H%M")
-    
-    for existing_qso in existing_qsos:
-        # Print out the field values with lengths and repr to detect subtle issues
-        st.write(f"Comparing new QSO:")
-        st.write(f"CALL: '{new_qso['call']}' (len: {len(new_qso['call'])}) vs '{existing_qso.get('CALL')}' (len: {len(existing_qso.get('CALL'))})")
-        st.write(f"QSO_DATE: '{new_qso['qso_date']}' (len: {len(new_qso['qso_date'])}) vs '{existing_qso.get('QSO_DATE')}' (len: {len(existing_qso.get('QSO_DATE'))})")
-        st.write(f"BAND: '{new_qso['band']}' (len: {len(new_qso['band'])}) vs '{existing_qso.get('BAND')}' (len: {len(existing_qso.get('BAND'))})")
-        st.write(f"MODE: '{new_qso['mode']}' (len: {len(new_qso['mode'])}) vs '{existing_qso.get('MODE')}' (len: {len(existing_qso.get('MODE'))})")
-        st.write(f"STATION_CALLSIGN: '{new_qso['station_callsign']}' (len: {len(new_qso['station_callsign'])}) vs '{existing_qso.get('STATION_CALLSIGN')}' (len: {len(existing_qso.get('STATION_CALLSIGN'))})")
-        st.write(f"TIME_ON: '{new_qso['time_on']}' (len: {len(new_qso['time_on'])}) vs '{existing_qso.get('TIME_ON')}' (len: {len(existing_qso.get('TIME_ON'))})")
 
-        if (new_qso['call'] == existing_qso.get('CALL') and
-            new_qso['qso_date'] == existing_qso.get('QSO_DATE') and
-            new_qso['band'] == existing_qso.get('BAND') and
-            new_qso['mode'] == existing_qso.get('MODE') and
-            new_qso['station_callsign'] == existing_qso.get('STATION_CALLSIGN')):
-            
+    for existing_qso in existing_qsos:
+        # Extracting and printing the exact values being compared
+        call_match = new_qso['call'] == existing_qso.get('CALL')
+        date_match = new_qso['qso_date'] == existing_qso.get('QSO_DATE')
+        time_on_match = new_qso['time_on'] == existing_qso.get('TIME_ON')
+        band_match = new_qso['band'] == existing_qso.get('BAND')
+        mode_match = new_qso['mode'] == existing_qso.get('MODE')
+        station_callsign_match = new_qso['station_callsign'] == existing_qso.get('STATION_CALLSIGN')
+
+        st.write(f"Comparing fields:")
+        st.write(f"CALL: {new_qso['call']} == {existing_qso.get('CALL')} -> {call_match}")
+        st.write(f"QSO_DATE: {new_qso['qso_date']} == {existing_qso.get('QSO_DATE')} -> {date_match}")
+        st.write(f"TIME_ON: {new_qso['time_on']} == {existing_qso.get('TIME_ON')} -> {time_on_match}")
+        st.write(f"BAND: {new_qso['band']} == {existing_qso.get('BAND')} -> {band_match}")
+        st.write(f"MODE: {new_qso['mode']} == {existing_qso.get('MODE')} -> {mode_match}")
+        st.write(f"STATION_CALLSIGN: {new_qso['station_callsign']} == {existing_qso.get('STATION_CALLSIGN')} -> {station_callsign_match}")
+
+        if all([call_match, date_match, time_on_match, band_match, mode_match, station_callsign_match]):
+            st.write("All fields matched, checking time difference...")
             existing_time = datetime.datetime.strptime(f"{existing_qso['QSO_DATE']} {existing_qso['TIME_ON']}", "%Y%m%d %H%M")
             time_difference = abs((new_time - existing_time).total_seconds())
-            
             st.write(f"Time difference: {time_difference} seconds")
 
             if time_difference <= 1200:  # within 20 minutes
@@ -97,6 +97,7 @@ def is_duplicate_qso(new_qso, existing_qsos):
     st.write(f"No duplicate found for: {new_qso}")
     return False
 
+# Function to convert the parsed data into ADIF format
 def convert_to_adif(parsed_data):
     adif_records = []
     for entry in parsed_data:
