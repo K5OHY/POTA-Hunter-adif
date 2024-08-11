@@ -82,16 +82,16 @@ if st.button("Convert to ADIF"):
         parsed_data = []
         
         for line in hunter_log_lines:
-            parts = line.split('\t')
-            if len(parts) >= 4:  # Adjusted to ensure the line has the necessary parts
+            parts = line.split()
+            if len(parts) >= 8:  # Ensure the line has the necessary parts
                 try:
-                    datetime_str = parts[0].strip()
+                    datetime_str = parts[0] + ' ' + parts[1]  # Date and time are in the first two parts
                     datetime_obj = datetime.strptime(datetime_str, '%Y-%m-%d %H:%M')
                     date = datetime_obj.strftime('%Y%m%d')
                     time = datetime_obj.strftime('%H%M')
                     
-                    call = parts[2].strip()
-                    band = parts[4].strip().lower()
+                    call = parts[3].strip()  # Worked call sign is in the 4th position
+                    band = parts[4].strip().lower()  # Band is in the 5th position
                     
                     qso_data = {
                         'CALL': call,
