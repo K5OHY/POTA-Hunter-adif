@@ -3,17 +3,16 @@ import datetime
 
 # Utility function to parse ADIF content
 def parse_adif_file(adif_content):
-    # Simple parser assuming each QSO is on a separate line
     qsos = []
     for line in adif_content.splitlines():
         qso = {}
         if '<call:' in line.lower():
             try:
-                qso['CALL'] = line.split('<call:')[1].split('>')[1].strip()
+                qso['CALL'] = line.split('<call:')[1].split('>')[1].strip().upper()
             except IndexError:
                 qso['CALL'] = ''
             try:
-                qso['BAND'] = line.split('<band:')[1].split('>')[1].strip()
+                qso['BAND'] = line.split('<band:')[1].split('>')[1].strip().lower()
             except IndexError:
                 qso['BAND'] = ''
             try:
@@ -51,11 +50,32 @@ def filter_duplicates(new_log, existing_qsos):
             filtered_qsos.append(qso)
     return filtered_qsos
 
+# Function to parse the log data
+def parse_log_data(log_data):
+    parsed_data = []
+    for line in log_data.splitlines():
+        if "Hunter" in line or "P2P" in line:
+            continue
+        parts = line.split()
+        if len(parts) >= 8:
+            qso = {
+                'DATE': parts[0],
+                'TIME': parts[1].replace(':', ''),
+                'STATION': parts[2],
+                'WORKED': parts[4],
+                'BAND': parts[5].lower(),
+                'MODE': parts[6].split('(')[0],
+                'STATE': parts[7],
+                'PARK': ' '.join(parts[8:])
+            }
+            parsed_data.append(qso)
+    return parsed_data
+
 # Function to convert parsed log data to ADIF format
 def convert_to_adif(parsed_data):
     adif_lines = []
     for qso in parsed_data:
-        adif_lines.append(f"<call:{len(qso['CALL'])}>{qso['CALL']} <qso_date:8>{qso['QSO_DATE']} <time_on:4>{qso['TIME_ON']} <band:{len(qso['BAND'])}>{qso['BAND']} <mode:2>{qso['MODE']} <station_callsign:{len(qso['STATION_CALLSIGN'])}>{qso['STATION_CALLSIGN']} <comment:{len(qso['COMMENT'])}>{qso['COMMENT']} <eor>")
+        adif_lines.append(f"<call:{len(qso['STATION'])}>{qso['STATION']} <qso_date:8>{qso['DATE'].replace('-','')} <time_on:4>{qso['TIME']} <band:{len(qso['BAND'])}>{qso['BAND']} <mode:2>{qso['MODE']} <station_callsign:{len(qso['WORKED'])}>{qso['WORKED']} <comment:{len(qso['PARK'])}>[POTA {qso['STATE']} {qso['PARK']}] <eor>")
     return '\n'.join(adif_lines)
 
 # Main application
@@ -79,9 +99,13 @@ log_data = st.text_area("Paste your log data here")
 if st.button("Convert to ADIF"):
     if log_data.strip():
         # Parse and clean the log data
-        new_qsos = []  # Implement the function to parse the new log data
-        # Compare with existing log and filter duplicates
-        filtered_qsos = filter_duplicates(new_qsos, existing_qsos)
+        new_qsos = parse_log_data(log_data)
+        
+        if uploaded_file is not None:
+            # Compare with existing log and filter duplicates
+            filtered_qsos = filter_duplicates(new_qsos, existing_qsos)
+        else:
+            filtered_qsos = new_qsos
         
         if filtered_qsos:
             # Convert filtered QSOs to ADIF
