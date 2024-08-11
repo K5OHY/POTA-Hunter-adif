@@ -31,12 +31,11 @@ def parse_adif_file(adif_content):
 def convert_hunter_log_to_adif(hunter_log_lines):
     adif_data = []
     for line in hunter_log_lines:
-        # Split by tabs or multiple spaces
-        parts = [p for p in line.split() if p.strip()]
+        parts = line.split('\t')  # Split by tabs
         if len(parts) >= 8:
             try:
                 # Parse Date/Time
-                datetime_str = parts[0] + ' ' + parts[1]
+                datetime_str = parts[0].strip()
                 datetime_obj = datetime.strptime(datetime_str, '%Y-%m-%d %H:%M')
                 date = datetime_obj.strftime('%Y%m%d')
                 time = datetime_obj.strftime('%H%M')
@@ -44,13 +43,21 @@ def convert_hunter_log_to_adif(hunter_log_lines):
                 # Extract necessary fields
                 worked_call = parts[3].strip()  # Worked call sign
                 band = parts[4].strip().lower()  # Band
+                mode = parts[5].strip().split(' ')[0]  # Mode (strip out the extra part)
+                location = parts[6].strip()  # Location (Country)
+                park = parts[7].strip()  # Park (Park Identifier)
+                
+                comment = f"{location} {park}"
 
                 # Create ADIF QSO entry
                 adif_qso = (
                     f"<call:{len(worked_call)}>{worked_call} "
                     f"<qso_date:{len(date)}>{date} "
                     f"<time_on:{len(time)}>{time} "
-                    f"<band:{len(band)}>{band} <eor>"
+                    f"<band:{len(band)}>{band} "
+                    f"<mode:{len(mode)}>{mode} "
+                    f"<comment:{len(comment)}>{comment} "
+                    f"<eor>"
                 )
                 adif_data.append(adif_qso)
             except (IndexError, ValueError) as e:
