@@ -5,7 +5,7 @@ def parse_hunter_log_line(line):
     # Strip leading and trailing whitespace
     line = line.strip()
     
-    # Split the line by tabs or multiple spaces
+    # Split the line by tabs
     parts = line.split('\t')
     
     # Ensure we have exactly 8 parts to parse a valid QSO
@@ -69,13 +69,14 @@ if st.button("Process Log"):
     # Split pasted log into lines and parse each line
     lines = pasted_log.strip().splitlines()
 
-    # Process each line
-    for line in lines:
-        if "Hunter" in line or "Rows per page" in line:
-            continue
-        parsed_qso = parse_hunter_log_line(line)
-        if parsed_qso:
-            parsed_qsos.append(parsed_qso)
+    # Process each line and ignore non-QSO lines
+    for i in range(0, len(lines), 2):  # Process every second line starting from index 0
+        if i + 1 < len(lines):  # Make sure there's a corresponding second line
+            # Merge this line with the next line to create a full QSO entry
+            combined_line = f"{lines[i]} {lines[i + 1]}"
+            parsed_qso = parse_hunter_log_line(combined_line)
+            if parsed_qso:
+                parsed_qsos.append(parsed_qso)
 
     # Convert parsed QSOs to ADIF
     if parsed_qsos:
