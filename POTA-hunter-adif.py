@@ -119,8 +119,12 @@ if st.button("Generate ADIF"):
         
         existing_qsos = []
         if uploaded_adif:
-            adif_content = StringIO(uploaded_adif.getvalue().decode("utf-8")).read()
-            existing_qsos = parse_adif(adif_content)
+            try:
+                adif_content = StringIO(uploaded_adif.getvalue().decode("utf-8", errors='replace')).read()
+                existing_qsos = parse_adif(adif_content)
+            except UnicodeDecodeError:
+                st.error("There was an issue decoding the ADIF file. Please ensure it is encoded in UTF-8.")
+                st.stop()
         
         # Filter out duplicates
         filtered_data = [
