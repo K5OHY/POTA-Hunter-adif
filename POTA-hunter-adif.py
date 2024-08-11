@@ -74,15 +74,15 @@ if st.button("Convert to ADIF"):
             parts = line.split()
             if len(parts) > 8:  # Ensure that the line has the necessary parts
                 try:
-                    date = parts[0]
-                    time = parts[1]
-                    call = parts[2]
-                    station_callsign = parts[4]
-                    band = parts[5]
-                    mode = parts[6].split('(')[0].strip()
-                    location = parts[7]
-                    park = parts[8]
-                    comment = ' '.join(parts[9:])
+                    date = parts[0].strip()
+                    time = parts[1].strip()
+                    call = parts[2].strip()
+                    station_callsign = parts[3].strip()
+                    band = parts[4].strip()
+                    mode = parts[5].strip().split('(')[0]
+                    location = parts[6].strip()
+                    park = parts[7].strip()
+                    comment = ' '.join(parts[8:]).strip()
                     
                     qso_data = {
                         'CALL': call,
