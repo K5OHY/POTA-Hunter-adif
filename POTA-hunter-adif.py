@@ -1,5 +1,5 @@
 import streamlit as st
-from datetime import datetime, timedelta
+from datetime import datetime
 
 def parse_adif_file(adif_content):
     existing_qsos = []
@@ -71,14 +71,17 @@ if st.button("Convert to ADIF"):
         parsed_data = []
         
         for line in hunter_log_lines:
-            parts = line.split()
+            parts = line.split('\t')
             if len(parts) > 8:  # Ensure that the line has the necessary parts
                 try:
-                    date = parts[0].strip()
-                    time = parts[1].strip()
+                    datetime_str = parts[0].strip()
+                    datetime_obj = datetime.strptime(datetime_str, '%Y-%m-%d %H:%M')
+                    date = datetime_obj.strftime('%Y%m%d')
+                    time = datetime_obj.strftime('%H%M')
+                    
                     call = parts[2].strip()
                     station_callsign = parts[3].strip()
-                    band = parts[4].strip()
+                    band = parts[4].strip().lower()
                     mode = parts[5].strip().split('(')[0]
                     location = parts[6].strip()
                     park = parts[7].strip()
@@ -86,15 +89,15 @@ if st.button("Convert to ADIF"):
                     
                     qso_data = {
                         'CALL': call,
-                        'QSO_DATE': date.replace('-', ''),
-                        'TIME_ON': time.replace(':', ''),
-                        'BAND': band.lower(),
+                        'QSO_DATE': date,
+                        'TIME_ON': time,
+                        'BAND': band,
                         'MODE': mode,
                         'STATION_CALLSIGN': station_callsign,
                         'COMMENT': f"[POTA {park} {location}] {comment}"
                     }
                     parsed_data.append(qso_data)
-                except IndexError as e:
+                except (IndexError, ValueError) as e:
                     st.error(f"Error parsing line: {line} - {e}")
                     continue
         
