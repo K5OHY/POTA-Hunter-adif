@@ -76,6 +76,14 @@ def is_duplicate_qso(new_qso, existing_qsos):
     new_time = datetime.datetime.strptime(f"{new_qso['qso_date']} {new_qso['time_on']}", "%Y%m%d %H%M")
     
     for existing_qso in existing_qsos:
+        # Print out each field being compared
+        st.write(f"Comparing new QSO:")
+        st.write(f"CALL: {new_qso['call']} vs {existing_qso.get('CALL')}")
+        st.write(f"QSO_DATE: {new_qso['qso_date']} vs {existing_qso.get('QSO_DATE')}")
+        st.write(f"BAND: {new_qso['band']} vs {existing_qso.get('BAND')}")
+        st.write(f"MODE: {new_qso['mode']} vs {existing_qso.get('MODE')}")
+        st.write(f"STATION_CALLSIGN: {new_qso['station_callsign']} vs {existing_qso.get('STATION_CALLSIGN')}")
+
         if (new_qso['call'] == existing_qso.get('CALL') and
             new_qso['qso_date'] == existing_qso.get('QSO_DATE') and
             new_qso['band'] == existing_qso.get('BAND') and
@@ -84,7 +92,6 @@ def is_duplicate_qso(new_qso, existing_qsos):
             existing_time = datetime.datetime.strptime(f"{existing_qso['QSO_DATE']} {existing_qso['TIME_ON']}", "%Y%m%d %H%M")
             time_difference = abs((new_time - existing_time).total_seconds())
             
-            st.write(f"Comparing with: {existing_qso}")
             st.write(f"Time difference: {time_difference} seconds")
 
             if time_difference <= 1200:  # within 20 minutes
