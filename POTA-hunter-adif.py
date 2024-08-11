@@ -82,7 +82,9 @@ def is_duplicate_qso(new_qso, existing_qsos):
             new_qso['station_callsign'] == existing_qso.get('STATION_CALLSIGN')):
             
             existing_time = datetime.datetime.strptime(f"{existing_qso['QSO_DATE']} {existing_qso['TIME_ON']}", "%Y%m%d %H%M")
-            if abs((new_time - existing_time).total_seconds()) <= 1200:  # within 20 minutes
+            time_difference = abs((new_time - existing_time).total_seconds())
+            
+            if time_difference <= 1200:  # within 20 minutes
                 return True
     return False
 
