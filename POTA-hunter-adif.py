@@ -1,5 +1,5 @@
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Parsing the ADIF file to extract necessary fields
 def parse_adif_file(adif_content):
@@ -20,6 +20,8 @@ def parse_adif_file(adif_content):
             current_qso['QSO_DATE'] = line.split('>')[1].strip()
         elif line.startswith('<time_on:'):
             current_qso['TIME_ON'] = line.split('>')[1].strip()
+        elif line.startswith('<mode:'):
+            current_qso['MODE'] = line.split('>')[1].strip()
 
     if current_qso and all(k in current_qso for k in ['CALL', 'BAND', 'QSO_DATE', 'TIME_ON']):
         existing_qsos.append(current_qso)  # Add the last QSO if not followed by <eor>
@@ -41,7 +43,7 @@ def convert_hunter_log_to_adif(hunter_log_lines):
                 time = datetime_obj.strftime('%H%M')
 
                 # Extract necessary fields
-                worked_call = parts[3].strip()  # Worked call sign
+                worked_call = parts[2].strip()  # Worked call sign
                 band = parts[4].strip().lower()  # Band
                 mode = parts[5].strip().split(' ')[0]  # Mode (strip out the extra part)
                 location = parts[6].strip()  # Location (Country)
@@ -50,15 +52,14 @@ def convert_hunter_log_to_adif(hunter_log_lines):
                 comment = f"{location} {park}"
 
                 # Create ADIF QSO entry
-                adif_qso = (
-                    f"<call:{len(worked_call)}>{worked_call} "
-                    f"<qso_date:{len(date)}>{date} "
-                    f"<time_on:{len(time)}>{time} "
-                    f"<band:{len(band)}>{band} "
-                    f"<mode:{len(mode)}>{mode} "
-                    f"<comment:{len(comment)}>{comment} "
-                    f"<eor>"
-                )
+                adif_qso = {
+                    'CALL': worked_call,
+                    'QSO_DATE': date,
+                    'TIME_ON': time,
+                    'BAND': band,
+                    'MODE': mode,
+                    'COMMENT': comment,
+                }
                 adif_data.append(adif_qso)
             except (IndexError, ValueError) as e:
                 st.error(f"Error parsing line: {line} - {e}")
@@ -67,16 +68,7 @@ def convert_hunter_log_to_adif(hunter_log_lines):
     st.write(f"Converted {len(adif_data)} QSOs to ADIF format.")
     return adif_data
 
-# Filter out duplicates from the parsed data
-def filter_duplicates(parsed_data, existing_qsos):
-    unique_qsos = []
-    for qso in parsed_data:
-        if not is_duplicate(qso, existing_qsos):
-            unique_qsos.append(qso)
-    st.write(f"Filtered out {len(parsed_data) - len(unique_qsos)} duplicates.")
-    return unique_qsos
-
-# Check if a new QSO is a duplicate based on time, call, and band
+# Check if a new QSO is a duplicate based on time, call, band, and mode
 def is_duplicate(new_qso, existing_qsos):
     try:
         new_time_on = datetime.strptime(new_qso['QSO_DATE'] + new_qso['TIME_ON'], '%Y%m%d%H%M')
@@ -87,7 +79,7 @@ def is_duplicate(new_qso, existing_qsos):
     for qso in existing_qsos:
         if (qso['CALL'] == new_qso['CALL'] and 
             qso['BAND'] == new_qso['BAND'] and
-            qso['QSO_DATE'] == new_qso['QSO_DATE']):
+            qso['MODE'] == new_qso['MODE']):
             try:
                 existing_time_on = datetime.strptime(qso['QSO_DATE'] + qso['TIME_ON'], '%Y%m%d%H%M')
                 time_diff = abs((new_time_on - existing_time_on).total_seconds())
@@ -99,11 +91,26 @@ def is_duplicate(new_qso, existing_qsos):
                 continue
     return False
 
-# Convert the parsed data to ADIF format
+# Filter out duplicates from the parsed data
+def filter_duplicates(parsed_data, existing_qsos):
+    unique_qsos = []
+    for qso in parsed_data:
+        if not is_duplicate(qso, existing_qsos):
+            unique_qsos.append(qso)
+    st.write(f"Filtered out {len(parsed_data) - len(unique_qsos)} duplicates.")
+    return unique_qsos
+
+# Convert the parsed data to ADIF format for output
 def convert_to_adif(parsed_data):
     adif_lines = []
     for qso in parsed_data:
-        adif_lines.append(f"<call:{len(qso['CALL'])}>{qso['CALL']} <qso_date:{len(qso['QSO_DATE'])}>{qso['QSO_DATE']} <time_on:{len(qso['TIME_ON'])}>{qso['TIME_ON']} <band:{len(qso['BAND'])}>{qso['BAND']} <eor>")
+        adif_lines.append(f"<call:{len(qso['CALL'])}>{qso['CALL']} "
+                          f"<qso_date:{len(qso['QSO_DATE'])}>{qso['QSO_DATE']} "
+                          f"<time_on:{len(qso['TIME_ON'])}>{qso['TIME_ON']} "
+                          f"<band:{len(qso['BAND'])}>{qso['BAND']} "
+                          f"<mode:{len(qso['MODE'])}>{qso['MODE']} "
+                          f"<comment:{len(qso['COMMENT'])}>{qso['COMMENT']} "
+                          f"<eor>")
     return '\n'.join(adif_lines)
 
 # Streamlit App Interface
@@ -123,10 +130,8 @@ if st.button("Convert to ADIF"):
         # Convert Hunter Log to ADIF format
         hunter_adif_data = convert_hunter_log_to_adif(hunter_log_lines)
         
-        # Parse the newly converted Hunter Log ADIF data
-        parsed_data = parse_adif_file('\n'.join(hunter_adif_data))
-        
-        unique_qsos = filter_duplicates(parsed_data, existing_qsos)
+        # Filter duplicates
+        unique_qsos = filter_duplicates(hunter_adif_data, existing_qsos)
         
         if unique_qsos:
             adif_result = convert_to_adif(unique_qsos)
