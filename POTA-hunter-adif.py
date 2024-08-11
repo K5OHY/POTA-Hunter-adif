@@ -1,8 +1,9 @@
 import streamlit as st
+from fuzzywuzzy import fuzz
 import datetime
 from io import StringIO
 
-# Step 1: Normalize and parse the QRZ ADIF file to generate keys
+# Function to parse the ADIF file and generate keys
 def parse_adif(adif_data):
     existing_qsos = []
     lines = adif_data.strip().splitlines()
@@ -11,7 +12,6 @@ def parse_adif(adif_data):
     for line in lines:
         if line.startswith('<EOR>'):
             if 'CALL' in current_qso and 'QSO_DATE' in current_qso and 'TIME_ON' in current_qso:
-                # Normalize and generate a unique key for each QSO
                 qso_key = (
                     current_qso.get('CALL', '').strip().lower(),
                     current_qso.get('QSO_DATE', '').strip(),
@@ -34,7 +34,7 @@ def parse_adif(adif_data):
 
     return existing_qsos
 
-# Step 2: Normalize and parse the log data to generate keys
+# Function to parse the log data and generate keys
 def clean_and_parse_log_data(log_data):
     lines = log_data.strip().split("\n")
     parsed_data = []
@@ -53,7 +53,6 @@ def clean_and_parse_log_data(log_data):
                 band = details[1].strip().lower()
                 mode = details[2].strip().replace("(", "").replace(")", "").lower()
 
-                # Normalize and generate a unique key for each QSO
                 qso_key = (
                     call,
                     qso_date,
@@ -74,16 +73,17 @@ def clean_and_parse_log_data(log_data):
     
     return parsed_data
 
-# Step 3: Check for duplicates using normalized keys
+# Function to check for duplicates using fuzzy matching
 def is_duplicate_qso(new_qso_key, existing_qsos):
     for existing_qso_key in existing_qsos:
-        if new_qso_key == existing_qso_key:
-            st.write(f"Duplicate found: {new_qso_key} is a duplicate of {existing_qso_key}")
+        similarity = fuzz.ratio(new_qso_key, existing_qso_key)
+        if similarity > 90:  # Threshold for similarity
+            st.write(f"Duplicate found with {similarity}% similarity: {new_qso_key} is a duplicate of {existing_qso_key}")
             return True
     st.write(f"No duplicate found for: {new_qso_key}")
     return False
 
-# Step 4: Simplify the ADIF conversion
+# Function to convert the parsed data into ADIF format
 def convert_to_adif(parsed_data):
     adif_records = []
     for entry in parsed_data:
