@@ -14,7 +14,6 @@ def parse_hunter_log_line(line):
         band = match.group(5)
         mode = match.group(6).split(" ")[0]
         comment = f"[POTA {match.group(7)} {match.group(8)}]"
-        st.write(f"Parsed line: {line.strip()}")
         return {
             "qso_date": qso_date,
             "qso_time": qso_time,
@@ -24,7 +23,6 @@ def parse_hunter_log_line(line):
             "comment": comment
         }
     else:
-        st.write(f"Failed to parse line: {line.strip()}")
         return None
 
 # Function to convert parsed QSOs to ADIF format
@@ -73,9 +71,12 @@ pasted_log = st.text_area("Paste your hunter log here:")
 if st.button("Process Log"):
     # Split pasted log into lines and parse each line
     lines = pasted_log.strip().splitlines()
-    
-    # Attempt to parse each line, ignoring non-QSO lines
-    parsed_qsos = [parse_hunter_log_line(line) for line in lines if parse_hunter_log_line(line)]
+
+    # Process each line
+    for line in lines:
+        parsed_qso = parse_hunter_log_line(line)
+        if parsed_qso:
+            parsed_qsos.append(parsed_qso)
     
     # Debugging: Display parsed QSOs
     if parsed_qsos:
@@ -83,7 +84,7 @@ if st.button("Process Log"):
         st.write(parsed_qsos)
     else:
         st.write("No QSOs were parsed.")
-    
+
     # Convert to ADIF
     adif_qsos = convert_to_adif(parsed_qsos)
     
