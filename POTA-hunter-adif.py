@@ -9,9 +9,9 @@ def parse_adif_file(adif_content):
 
     for line in adif_lines:
         if line.startswith('<eor>'):
-            if current_qso:
+            if current_qso and all(k in current_qso for k in ['CALL', 'BAND', 'QSO_DATE', 'TIME_ON']):
                 existing_qsos.append(current_qso)
-                current_qso = {}
+            current_qso = {}
         elif line.startswith('<call:'):
             current_qso['CALL'] = line.split('>')[1].strip()
         elif line.startswith('<band:'):
@@ -21,6 +21,10 @@ def parse_adif_file(adif_content):
         elif line.startswith('<time_on:'):
             current_qso['TIME_ON'] = line.split('>')[1].strip()
 
+    if current_qso and all(k in current_qso for k in ['CALL', 'BAND', 'QSO_DATE', 'TIME_ON']):
+        existing_qsos.append(current_qso)  # Add the last QSO if not followed by <eor>
+
+    st.write(f"Parsed {len(existing_qsos)} QSOs from the ADIF file.")
     return existing_qsos
 
 # Check if a new QSO is a duplicate based on time, call, and band
@@ -39,6 +43,7 @@ def is_duplicate(new_qso, existing_qsos):
                 existing_time_on = datetime.strptime(qso['QSO_DATE'] + qso['TIME_ON'], '%Y%m%d%H%M')
                 time_diff = abs((new_time_on - existing_time_on).total_seconds())
                 if time_diff <= 600:
+                    st.write(f"Duplicate found: {new_qso['CALL']} on {new_qso['BAND']} at {new_qso['QSO_DATE']} {new_qso['TIME_ON']}")
                     return True
             except ValueError as e:
                 st.error(f"Error parsing date and time for existing QSO: {qso['CALL']} - {e}")
@@ -51,6 +56,7 @@ def filter_duplicates(parsed_data, existing_qsos):
     for qso in parsed_data:
         if not is_duplicate(qso, existing_qsos):
             unique_qsos.append(qso)
+    st.write(f"Filtered out {len(parsed_data) - len(unique_qsos)} duplicates.")
     return unique_qsos
 
 # Convert the parsed data to ADIF format
@@ -99,6 +105,8 @@ if st.button("Convert to ADIF"):
                 except (IndexError, ValueError) as e:
                     st.error(f"Error parsing line: {line} - {e}")
                     continue
+        
+        st.write(f"Parsed {len(parsed_data)} QSOs from the pasted log.")
         
         unique_qsos = filter_duplicates(parsed_data, existing_qsos)
         
