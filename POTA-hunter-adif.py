@@ -49,7 +49,7 @@ def convert_hunter_log_to_adif(hunter_log_lines):
                 location = parts[6].strip()  # Location (Country)
                 park = parts[7].strip()  # Park (Park Identifier)
                 
-                comment = f"{location} {park}"
+                comment = f"[POTA {location} {park}] tnx 73"
 
                 # Create ADIF QSO entry
                 adif_qso = {
