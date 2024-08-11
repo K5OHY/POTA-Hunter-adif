@@ -16,34 +16,35 @@ def parse_adif_file(adif_content):
             current_qso['CALL'] = line.split('>')[1].strip()
         elif line.startswith('<band:'):
             current_qso['BAND'] = line.split('>')[1].strip().lower()
-        elif line.startswith('<mode:'):
-            current_qso['MODE'] = line.split('>')[1].strip().split('(')[0].strip()
         elif line.startswith('<qso_date:'):
             current_qso['QSO_DATE'] = line.split('>')[1].strip()
+        elif line.startswith('<qso_date_off:'):
+            current_qso['QSO_DATE_OFF'] = line.split('>')[1].strip()
         elif line.startswith('<time_on:'):
             current_qso['TIME_ON'] = line.split('>')[1].strip()
-        elif line.startswith('<station_callsign:'):
-            current_qso['STATION_CALLSIGN'] = line.split('>')[1].strip()
+        elif line.startswith('<time_off:'):
+            current_qso['TIME_OFF'] = line.split('>')[1].strip()
 
     return existing_qsos
 
 # Check if a new QSO is a duplicate based on time, call, band, and mode
 def is_duplicate(new_qso, existing_qsos):
     try:
-        new_time = datetime.strptime(new_qso['QSO_DATE'] + new_qso['TIME_ON'], '%Y%m%d%H%M')
+        new_time_on = datetime.strptime(new_qso['QSO_DATE'] + new_qso['TIME_ON'], '%Y%m%d%H%M')
+        new_time_off = datetime.strptime(new_qso['QSO_DATE_OFF'] + new_qso['TIME_OFF'], '%Y%m%d%H%M')
     except ValueError as e:
         st.error(f"Error parsing date and time for QSO: {new_qso['CALL']} - {e}")
         return False
 
     for qso in existing_qsos:
         if (qso['CALL'] == new_qso['CALL'] and 
-            qso['BAND'] == new_qso['BAND'] and 
-            qso['MODE'] == new_qso['MODE'] and
-            qso['STATION_CALLSIGN'] == new_qso['STATION_CALLSIGN']):
+            qso['BAND'] == new_qso['BAND']):
             try:
-                existing_time = datetime.strptime(qso['QSO_DATE'] + qso['TIME_ON'], '%Y%m%d%H%M')
-                time_diff = abs((new_time - existing_time).total_seconds())
-                if time_diff <= 600:  # 10 minutes
+                existing_time_on = datetime.strptime(qso['QSO_DATE'] + qso['TIME_ON'], '%Y%m%d%H%M')
+                existing_time_off = datetime.strptime(qso['QSO_DATE_OFF'] + qso['TIME_OFF'], '%Y%m%d%H%M')
+                
+                if (abs((new_time_on - existing_time_on).total_seconds()) <= 600 or
+                    abs((new_time_off - existing_time_off).total_seconds()) <= 600):
                     return True
             except ValueError as e:
                 st.error(f"Error parsing date and time for existing QSO: {qso['CALL']} - {e}")
@@ -62,7 +63,7 @@ def filter_duplicates(parsed_data, existing_qsos):
 def convert_to_adif(parsed_data):
     adif_lines = []
     for qso in parsed_data:
-        adif_lines.append(f"<call:{len(qso['CALL'])}>{qso['CALL']} <qso_date:{len(qso['QSO_DATE'])}>{qso['QSO_DATE']} <time_on:{len(qso['TIME_ON'])}>{qso['TIME_ON']} <band:{len(qso['BAND'])}>{qso['BAND']} <mode:{len(qso['MODE'])}>{qso['MODE']} <station_callsign:{len(qso['STATION_CALLSIGN'])}>{qso['STATION_CALLSIGN']} <eor>")
+        adif_lines.append(f"<call:{len(qso['CALL'])}>{qso['CALL']} <qso_date:{len(qso['QSO_DATE'])}>{qso['QSO_DATE']} <qso_date_off:{len(qso['QSO_DATE_OFF'])}>{qso['QSO_DATE_OFF']} <time_on:{len(qso['TIME_ON'])}>{qso['TIME_ON']} <time_off:{len(qso['TIME_OFF'])}>{qso['TIME_OFF']} <band:{len(qso['BAND'])}>{qso['BAND']} <eor>")
     return '\n'.join(adif_lines)
 
 # Streamlit App Interface
@@ -98,7 +99,9 @@ if st.button("Convert to ADIF"):
                     qso_data = {
                         'CALL': call,
                         'QSO_DATE': date,
+                        'QSO_DATE_OFF': date,  # Assuming the same date for off time
                         'TIME_ON': time,
+                        'TIME_OFF': time,
                         'BAND': band,
                         'MODE': mode,
                         'STATION_CALLSIGN': station_callsign,
