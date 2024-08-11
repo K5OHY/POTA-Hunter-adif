@@ -2,21 +2,22 @@ import streamlit as st
 
 # Function to parse a single line from the hunter log
 def parse_hunter_log_line(line):
-    # Split the line by tabs and spaces
-    parts = line.strip().split()
+    # Split the line by whitespace and tabs
+    parts = line.strip().split('\t')
     
     if len(parts) >= 8:
-        qso_date = parts[0]  # Date
-        qso_time = parts[1]  # Time
-        station = parts[2]  # Station
-        operator = parts[3]  # Operator
-        worked = parts[4]  # Worked station
-        band = parts[5]  # Band
-        mode = parts[6].split(" ")[0]  # Mode (only first part before space)
-        location = parts[7]  # Location
-        park_info = " ".join(parts[8:])  # Park info and any trailing description
-        comment = f"[POTA {location} {park_info}]"
+        qso_date, qso_time = parts[0].split()
+        station = parts[1]  # Station
+        operator = parts[2]  # Operator
+        worked = parts[3]  # Worked station
+        band = parts[4]  # Band
+        mode = parts[5].split()[0]  # Mode (only first part before space)
+        location = parts[6]  # Location
+        park = parts[7]  # Park
         
+        # Create a comment with the location and park information
+        comment = f"[POTA {location} {park}]"
+
         # Return a dictionary representing the ADIF fields
         return {
             "qso_date": qso_date.replace("-", ""),
@@ -24,8 +25,8 @@ def parse_hunter_log_line(line):
             "station": station,
             "operator": operator,
             "worked": worked,
-            "band": band,
-            "mode": mode,
+            "band": band.lower(),
+            "mode": mode.upper(),
             "comment": comment
         }
     else:
