@@ -18,9 +18,14 @@ def parse_adif_to_df(adif_data):
             parts = line.split('<')
             for part in parts:
                 if ':' in part:
-                    key, value = part.split('>', 1)
-                    key = key.split(':')[0].upper().strip()
-                    current_qso[key] = value.strip().lower()
+                    key_value = part.split('>', 1)
+                    if len(key_value) == 2:  # Ensure that the split results in two parts
+                        key = key_value[0].split(':')[0].upper().strip()
+                        value = key_value[1].strip().lower()
+                        current_qso[key] = value
+
+    if current_qso:  # Add the last QSO if not yet added
+        records.append(current_qso)
 
     df = pd.DataFrame(records)
     return df
