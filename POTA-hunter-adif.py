@@ -1,86 +1,56 @@
 import streamlit as st
+import datetime
 
-# Function to parse a single line from the hunter log
-def parse_hunter_log_line(line):
-    # Strip leading and trailing whitespace
-    line = line.strip()
+def parse_pota_log(log_text):
+    adif_records = []
+    lines = log_text.strip().splitlines()
     
-    # Split the line by tabs
-    parts = line.split('\t')
+    for line in lines:
+        if line.startswith("Hunter"):
+            # Extracting data assuming tab-separated or space-separated format after "Hunter"
+            parts = line.split()
+            if len(parts) < 8:  # Ensure there are enough columns in the data
+                continue
+            
+            date_time_str = parts[1] + " " + parts[2]
+            station = parts[3]
+            operator = parts[4]
+            worked = parts[5]
+            band = parts[6]
+            mode = parts[7].strip('()')
+            park = parts[-1]
+            
+            # Convert date and time to ADIF format
+            dt = datetime.datetime.strptime(date_time_str, "%Y-%m-%d %H:%M")
+            qso_date = dt.strftime("%Y%m%d")
+            time_on = dt.strftime("%H%M")
+            
+            # Create ADIF record
+            adif_record = f"<CALL:{len(worked)}>{worked} <BAND:{len(band)}>{band} <MODE:{len(mode)}>{mode} "
+            adif_record += f"<QSO_DATE:{len(qso_date)}>{qso_date} <TIME_ON:{len(time_on)}>{time_on} "
+            adif_record += f"<STATION_CALLSIGN:{len(station)}>{station} <OPERATOR:{len(operator)}>{operator} "
+            adif_record += f"<MY_SIG_INFO:{len(park)}>{park} <EOR>"
+            
+            adif_records.append(adif_record)
     
-    # Ensure we have exactly 8 parts to parse a valid QSO
-    if len(parts) == 8:
-        qso_date_time = parts[0]
-        station = parts[1]
-        operator = parts[2]
-        worked = parts[3]
-        band = parts[4].lower()  # Convert band to lowercase
-        mode = parts[5].split()[0].upper()  # Use only the first part of mode and convert to uppercase
-        location = parts[6]
-        park = parts[7]
+    return "\n".join(adif_records)
+
+st.title("POTA Log to ADIF Converter")
+
+st.write("Paste your POTA Hunter log data below:")
+
+log_text = st.text_area("POTA Hunter Log Data", height=300)
+
+if st.button("Convert to ADIF"):
+    if log_text:
+        adif_data = parse_pota_log(log_text)
         
-        # Parse the date and time from the first field
-        qso_date, qso_time = qso_date_time.split()
-
-        # Create a comment with the location and park information
-        comment = f"[POTA {location} {park}]"
-        
-        # Return a dictionary representing the ADIF fields
-        return {
-            "qso_date": qso_date.replace("-", ""),
-            "qso_time": qso_time.replace(":", ""),
-            "station": station,
-            "operator": operator,
-            "worked": worked,
-            "band": band,
-            "mode": mode,
-            "comment": comment
-        }
-    
-    return None
-
-# Function to convert parsed QSOs to ADIF format
-def convert_to_adif(parsed_qsos):
-    adif_entries = []
-    for qso in parsed_qsos:
-        adif_entry = (
-            f"<qso_date:{len(qso['qso_date'])}>{qso['qso_date']} "
-            f"<time_on:{len(qso['qso_time'])}>{qso['qso_time']} "
-            f"<call:{len(qso['worked'])}>{qso['worked']} "
-            f"<band:{len(qso['band'])}>{qso['band']} "
-            f"<mode:{len(qso['mode'])}>{qso['mode']} "
-            f"<comment:{len(qso['comment'])}>{qso['comment']} "
-            "<eor>"
+        # Allow user to download the ADIF file
+        st.download_button(
+            label="Download ADIF File",
+            data=adif_data,
+            file_name="pota_log.adif",
+            mime="text/plain"
         )
-        adif_entries.append(adif_entry)
-    return adif_entries
-
-# Streamlit app layout
-st.title("Hunter Log ADIF Converter")
-
-# Initialize an empty list for parsed QSOs
-parsed_qsos = []
-
-# Text area to paste the log
-pasted_log = st.text_area("Paste your hunter log here:")
-
-# Button to process the log
-if st.button("Process Log"):
-    # Split pasted log into lines and parse each line
-    lines = pasted_log.strip().splitlines()
-
-    # Process each line and ignore non-QSO lines
-    for i in range(0, len(lines), 2):  # Process every second line starting from index 0
-        if i + 1 < len(lines):  # Make sure there's a corresponding second line
-            # Merge this line with the next line to create a full QSO entry
-            combined_line = f"{lines[i]} {lines[i + 1]}"
-            parsed_qso = parse_hunter_log_line(combined_line)
-            if parsed_qso:
-                parsed_qsos.append(parsed_qso)
-
-    # Convert parsed QSOs to ADIF
-    if parsed_qsos:
-        final_adif = "\n".join(convert_to_adif(parsed_qsos))
-        st.text_area("Generated ADIF File", final_adif)
     else:
-        st.write("No valid QSOs found in the pasted log.")
+        st.error("Please paste the POTA log data to convert.")
