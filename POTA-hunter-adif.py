@@ -85,7 +85,10 @@ def is_duplicate_qso(new_qso, existing_qsos):
             time_difference = abs((new_time - existing_time).total_seconds())
             
             if time_difference <= 1200:  # within 20 minutes
+                st.write(f"Duplicate found: {new_qso} is a duplicate of {existing_qso}")
                 return True
+
+    st.write(f"No duplicate found for: {new_qso}")
     return False
 
 def convert_to_adif(parsed_data):
