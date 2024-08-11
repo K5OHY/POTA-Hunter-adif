@@ -97,7 +97,7 @@ def convert_to_adif(parsed_data):
         )
         record += "<EOR>\n"
         adif_records.append(record)
-    return "\n".join(adif_records)
+    return "\n().join(adif_records)
 
 # Streamlit app interface
 st.title("POTA Log to ADIF Converter with Duplicate Removal")
