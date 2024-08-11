@@ -38,7 +38,9 @@ def is_duplicate(new_qso, existing_qsos):
             try:
                 existing_time = datetime.strptime(qso['QSO_DATE'] + qso['TIME_ON'], '%Y%m%d%H%M')
                 time_diff = abs((new_time - existing_time).total_seconds())
+                st.write(f"Comparing {new_qso['CALL']} - New Time: {new_time}, Existing Time: {existing_time}, Time Diff: {time_diff}")
                 if time_diff <= 600:  # 10 minutes
+                    st.write(f"Duplicate found: {new_qso['CALL']} on {new_qso['BAND']} at {new_qso['TIME_ON']}")
                     return True
             except ValueError as e:
                 st.error(f"Error parsing date and time for existing QSO: {qso['CALL']} - {e}")
@@ -46,7 +48,12 @@ def is_duplicate(new_qso, existing_qsos):
     return False
 
 def filter_duplicates(parsed_data, existing_qsos):
-    unique_qsos = [qso for qso in parsed_data if not is_duplicate(qso, existing_qsos)]
+    unique_qsos = []
+    for qso in parsed_data:
+        if not is_duplicate(qso, existing_qsos):
+            unique_qsos.append(qso)
+        else:
+            st.write(f"Filtered out as duplicate: {qso['CALL']} on {qso['BAND']} at {qso['TIME_ON']}")
     return unique_qsos
 
 def convert_to_adif(parsed_data):
