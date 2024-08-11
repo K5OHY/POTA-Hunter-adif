@@ -71,8 +71,51 @@ def clean_and_parse_log_data(log_data):
     
     return parsed_data
 
-# Streamlit app interface for testing the parsing
-st.title("POTA Log to ADIF Converter - Parsing Test")
+# Function to check if a QSO is a duplicate
+def is_duplicate_qso(new_qso, existing_qsos):
+    try:
+        new_time = datetime.datetime.strptime(f"{new_qso['qso_date']} {new_qso['time_on']}", "%Y%m%d %H%M")
+    except ValueError as e:
+        st.write(f"Error parsing new QSO time: {e}")
+        return False
+
+    for existing_qso in existing_qsos:
+        try:
+            existing_time = datetime.datetime.strptime(f"{existing_qso['qso_date']} {existing_qso['time_on']}", "%Y%m%d %H%M")
+        except ValueError as e:
+            st.write(f"Error parsing existing QSO time: {e}")
+            continue
+
+        if (
+            new_qso['call'] == existing_qso['call'] and
+            new_qso['band'] == existing_qso['band'] and
+            new_qso['mode'] == existing_qso['mode']
+        ):
+            time_difference = abs((new_time - existing_time).total_seconds())
+            if time_difference <= 1200:  # within 20 minutes
+                st.write(f"Duplicate found: {new_qso}")
+                return True
+
+    return False
+
+# Function to convert the parsed data into ADIF format
+def convert_to_adif(parsed_data):
+    adif_records = []
+    for entry in parsed_data:
+        record = (
+            f"<CALL:{len(entry['call'])}>{entry['call']}"
+            f"<QSO_DATE:{len(entry['qso_date'])}>{entry['qso_date']}"
+            f"<TIME_ON:{len(entry['time_on'])}>{entry['time_on']}"
+            f"<BAND:{len(entry['band'])}>{entry['band']}"
+            f"<MODE:{len(entry['mode'])}>{entry['mode']}"
+            f"<STATION_CALLSIGN:{len(entry['station_callsign'])}>{entry['station_callsign']}"
+        )
+        record += "<EOR>\n"
+        adif_records.append(record)
+    return "\n".join(adif_records)
+
+# Streamlit app interface
+st.title("POTA Log to ADIF Converter with Duplicate Removal")
 
 st.write("Paste your POTA hunters log data below:")
 
@@ -80,15 +123,35 @@ log_data = st.text_area("Hunters Log Data", height=300)
 
 uploaded_adif = st.file_uploader("Upload your existing QRZ ADIF file", type="adi")
 
-if st.button("Parse Data"):
+if st.button("Generate ADIF"):
     if log_data:
         parsed_data = clean_and_parse_log_data(log_data)
-        st.write("Parsed Log Data:", parsed_data)  # Display parsed log data
 
+        existing_qsos = []
         if uploaded_adif:
             try:
                 adif_content = StringIO(uploaded_adif.getvalue().decode("utf-8", errors='replace')).read()
                 existing_qsos = parse_adif(adif_content)
-                st.write("Parsed ADIF Data:", existing_qsos)  # Display parsed ADIF data
             except UnicodeDecodeError:
                 st.error("There was an issue decoding the ADIF file. Please ensure it is encoded in UTF-8.")
+                st.stop()
+        
+        # Filter out duplicates
+        filtered_data = [
+            qso for qso in parsed_data if not is_duplicate_qso(qso, existing_qsos)
+        ]
+        
+        if filtered_data:  # Check if any data was parsed successfully
+            adif_data = convert_to_adif(filtered_data)
+            st.text_area("ADIF Output", adif_data, height=300)
+
+            st.download_button(
+                label="Download ADIF",
+                data=adif_data,
+                file_name="pota_log_filtered.adi",
+                mime="text/plain",
+            )
+        else:
+            st.warning("No valid log data was found or all were duplicates.")
+    else:
+        st.warning("Please paste the log data before generating the ADIF file.")
