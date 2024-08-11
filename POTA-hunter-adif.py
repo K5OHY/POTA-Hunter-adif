@@ -9,7 +9,6 @@ def parse_adif(adif_data):
 
     for line in lines:
         if line.startswith('<EOR>'):
-            # End of Record, add current QSO to list
             if 'CALL' in current_qso and 'QSO_DATE' in current_qso and 'TIME_ON' in current_qso:
                 existing_qsos.append(current_qso)
             current_qso = {}
@@ -20,8 +19,8 @@ def parse_adif(adif_data):
                     key_value = part.split('>', 1)
                     if len(key_value) == 2:
                         key, value = key_value
-                        key = key.split(':')[0].strip()
-                        current_qso[key] = value.strip()
+                        key = key.split(':')[0].strip().upper()
+                        current_qso[key] = value.strip().lower()
 
     return existing_qsos
 
@@ -36,7 +35,7 @@ def clean_and_parse_log_data(log_data):
                 date_time = lines[i].strip().split()
                 qso_date = date_time[0].replace("-", "")
                 time_on = date_time[1].replace(":", "")
-                call = lines[i + 1].strip()
+                call = lines[i + 1].strip().lower()
                 details = lines[i + 3].strip().split()
 
                 if len(details) < 5:
@@ -44,9 +43,9 @@ def clean_and_parse_log_data(log_data):
                     i += 4
                     continue
                 
-                station_callsign = details[0].strip()
+                station_callsign = details[0].strip().lower()
                 band = details[1].strip().lower()
-                mode = details[2].strip().replace("(", "").replace(")", "")
+                mode = details[2].strip().replace("(", "").replace(")", "").lower()
                 location = details[3].strip().upper()
                 pota_ref = details[4].strip()
                 park_name = " ".join(details[5:])
@@ -79,7 +78,8 @@ def is_duplicate_qso(new_qso, existing_qsos):
     for existing_qso in existing_qsos:
         if (new_qso['call'] == existing_qso.get('CALL') and
             new_qso['band'] == existing_qso.get('BAND') and
-            new_qso['mode'] == existing_qso.get('MODE')):
+            new_qso['mode'] == existing_qso.get('MODE') and
+            new_qso['station_callsign'] == existing_qso.get('STATION_CALLSIGN')):
             
             existing_time = datetime.datetime.strptime(f"{existing_qso['QSO_DATE']} {existing_qso['TIME_ON']}", "%Y%m%d %H%M")
             if abs((new_time - existing_time).total_seconds()) <= 1200:  # within 20 minutes
