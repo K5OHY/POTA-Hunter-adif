@@ -14,6 +14,7 @@ def parse_hunter_log_line(line):
         band = match.group(5)
         mode = match.group(6).split(" ")[0]
         comment = f"[POTA {match.group(7)} {match.group(8)}]"
+        st.write(f"Parsed line: {line.strip()}")
         return {
             "qso_date": qso_date,
             "qso_time": qso_time,
@@ -23,6 +24,7 @@ def parse_hunter_log_line(line):
             "comment": comment
         }
     else:
+        st.write(f"Failed to parse line: {line.strip()}")
         return None
 
 # Function to convert parsed QSOs to ADIF format
@@ -79,6 +81,8 @@ if st.button("Process Log"):
     if parsed_qsos:
         st.write("Parsed QSOs:")
         st.write(parsed_qsos)
+    else:
+        st.write("No QSOs were parsed.")
     
     # Convert to ADIF
     adif_qsos = convert_to_adif(parsed_qsos)
@@ -90,7 +94,8 @@ if st.button("Process Log"):
     final_adif = "\n".join(convert_to_adif(filtered_qsos))
     
     # Display the final ADIF content
-    st.text_area("Generated ADIF File", final_adif, height=300)
-    
-    # Download the ADIF file
-    st.download_button("Download ADIF", final_adif, file_name="hunter_log.adif")
+    if final_adif:
+        st.text_area("Generated ADIF File", final_adif, height=300)
+        st.download_button("Download ADIF", final_adif, file_name="hunter_log.adif")
+    else:
+        st.write("No ADIF content generated.")
