@@ -2,7 +2,7 @@ import streamlit as st
 import datetime
 from io import StringIO
 
-# Function to parse the QRZ ADIF file
+# Step 1: Parse the QRZ ADIF file and generate keys
 def parse_adif(adif_data):
     existing_qsos = []
     lines = adif_data.strip().splitlines()
@@ -11,7 +11,16 @@ def parse_adif(adif_data):
     for line in lines:
         if line.startswith('<EOR>'):
             if 'CALL' in current_qso and 'QSO_DATE' in current_qso and 'TIME_ON' in current_qso:
-                existing_qsos.append(current_qso)
+                # Generate a unique key for each QSO
+                qso_key = (
+                    current_qso.get('CALL', ''),
+                    current_qso.get('QSO_DATE', ''),
+                    current_qso.get('TIME_ON', ''),
+                    current_qso.get('BAND', ''),
+                    current_qso.get('MODE', ''),
+                    current_qso.get('STATION_CALLSIGN', '')
+                )
+                existing_qsos.append(qso_key)
             current_qso = {}
         else:
             parts = line.split('<')
@@ -25,7 +34,7 @@ def parse_adif(adif_data):
 
     return existing_qsos
 
-# Function to parse the pasted log data
+# Step 2: Parse the log data and generate keys
 def clean_and_parse_log_data(log_data):
     lines = log_data.strip().split("\n")
     parsed_data = []
@@ -44,15 +53,17 @@ def clean_and_parse_log_data(log_data):
                 band = details[1].strip().lower()
                 mode = details[2].strip().replace("(", "").replace(")", "").lower()
 
-                entry = {
-                    "qso_date": qso_date,
-                    "time_on": time_on,
-                    "call": call,
-                    "station_callsign": station_callsign,
-                    "band": band,
-                    "mode": mode,
-                }
-                parsed_data.append(entry)
+                # Generate a unique key for each QSO
+                qso_key = (
+                    call,
+                    qso_date,
+                    time_on,
+                    band,
+                    mode,
+                    station_callsign
+                )
+
+                parsed_data.append(qso_key)
                 i += 4
             except IndexError:
                 st.warning(f"Skipping entry due to unexpected format: {lines[i:i+4]}")
@@ -63,51 +74,26 @@ def clean_and_parse_log_data(log_data):
     
     return parsed_data
 
-# Function to compare the new QSO with existing QSOs from the QRZ ADIF file
-def is_duplicate_qso(new_qso, existing_qsos):
-    new_time = datetime.datetime.strptime(f"{new_qso['qso_date']} {new_qso['time_on']}", "%Y%m%d %H%M")
-
-    for existing_qso in existing_qsos:
-        # Extracting and printing the exact values being compared
-        call_match = new_qso['call'] == existing_qso.get('CALL')
-        date_match = new_qso['qso_date'] == existing_qso.get('QSO_DATE')
-        time_on_match = new_qso['time_on'] == existing_qso.get('TIME_ON')
-        band_match = new_qso['band'] == existing_qso.get('BAND')
-        mode_match = new_qso['mode'] == existing_qso.get('MODE')
-        station_callsign_match = new_qso['station_callsign'] == existing_qso.get('STATION_CALLSIGN')
-
-        st.write(f"Comparing fields:")
-        st.write(f"CALL: {new_qso['call']} == {existing_qso.get('CALL')} -> {call_match}")
-        st.write(f"QSO_DATE: {new_qso['qso_date']} == {existing_qso.get('QSO_DATE')} -> {date_match}")
-        st.write(f"TIME_ON: {new_qso['time_on']} == {existing_qso.get('TIME_ON')} -> {time_on_match}")
-        st.write(f"BAND: {new_qso['band']} == {existing_qso.get('BAND')} -> {band_match}")
-        st.write(f"MODE: {new_qso['mode']} == {existing_qso.get('MODE')} -> {mode_match}")
-        st.write(f"STATION_CALLSIGN: {new_qso['station_callsign']} == {existing_qso.get('STATION_CALLSIGN')} -> {station_callsign_match}")
-
-        if all([call_match, date_match, time_on_match, band_match, mode_match, station_callsign_match]):
-            st.write("All fields matched, checking time difference...")
-            existing_time = datetime.datetime.strptime(f"{existing_qso['QSO_DATE']} {existing_qso['TIME_ON']}", "%Y%m%d %H%M")
-            time_difference = abs((new_time - existing_time).total_seconds())
-            st.write(f"Time difference: {time_difference} seconds")
-
-            if time_difference <= 1200:  # within 20 minutes
-                st.write(f"Duplicate found: {new_qso} is a duplicate of {existing_qso}")
-                return True
-
-    st.write(f"No duplicate found for: {new_qso}")
+# Step 3: Check for duplicates using keys
+def is_duplicate_qso(new_qso_key, existing_qsos):
+    for existing_qso_key in existing_qsos:
+        if new_qso_key == existing_qso_key:
+            st.write(f"Duplicate found: {new_qso_key} is a duplicate of {existing_qso_key}")
+            return True
+    st.write(f"No duplicate found for: {new_qso_key}")
     return False
 
-# Function to convert the parsed data into ADIF format
+# Step 4: Simplify the ADIF conversion
 def convert_to_adif(parsed_data):
     adif_records = []
     for entry in parsed_data:
         record = (
-            f"<CALL:{len(entry['call'])}>{entry['call']}"
-            f"<QSO_DATE:{len(entry['qso_date'])}>{entry['qso_date']}"
-            f"<TIME_ON:{len(entry['time_on'])}>{entry['time_on']}"
-            f"<BAND:{len(entry['band'])}>{entry['band']}"
-            f"<MODE:{len(entry['mode'])}>{entry['mode']}"
-            f"<STATION_CALLSIGN:{len(entry['station_callsign'])}>{entry['station_callsign']}"
+            f"<CALL:{len(entry[0])}>{entry[0]}"
+            f"<QSO_DATE:{len(entry[1])}>{entry[1]}"
+            f"<TIME_ON:{len(entry[2])}>{entry[2]}"
+            f"<BAND:{len(entry[3])}>{entry[3]}"
+            f"<MODE:{len(entry[4])}>{entry[4]}"
+            f"<STATION_CALLSIGN:{len(entry[5])}>{entry[5]}"
         )
         record += "<EOR>\n"
         adif_records.append(record)
@@ -125,12 +111,14 @@ uploaded_adif = st.file_uploader("Upload your existing QRZ ADIF file", type="adi
 if st.button("Generate ADIF"):
     if log_data:
         parsed_data = clean_and_parse_log_data(log_data)
-        
+        st.write("Parsed Log Data:", parsed_data)  # Verify parsing
+
         existing_qsos = []
         if uploaded_adif:
             try:
                 adif_content = StringIO(uploaded_adif.getvalue().decode("utf-8", errors='replace')).read()
                 existing_qsos = parse_adif(adif_content)
+                st.write("Parsed ADIF Data:", existing_qsos)  # Verify parsing
             except UnicodeDecodeError:
                 st.error("There was an issue decoding the ADIF file. Please ensure it is encoded in UTF-8.")
                 st.stop()
