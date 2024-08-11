@@ -27,45 +27,6 @@ def parse_adif_file(adif_content):
     st.write(f"Parsed {len(existing_qsos)} QSOs from the ADIF file.")
     return existing_qsos
 
-# Check if a new QSO is a duplicate based on time, call, and band
-def is_duplicate(new_qso, existing_qsos):
-    try:
-        new_time_on = datetime.strptime(new_qso['QSO_DATE'] + new_qso['TIME_ON'], '%Y%m%d%H%M')
-    except ValueError as e:
-        st.error(f"Error parsing date and time for QSO: {new_qso['CALL']} - {e}")
-        return False
-
-    for qso in existing_qsos:
-        if (qso['CALL'] == new_qso['CALL'] and 
-            qso['BAND'] == new_qso['BAND'] and
-            qso['QSO_DATE'] == new_qso['QSO_DATE']):
-            try:
-                existing_time_on = datetime.strptime(qso['QSO_DATE'] + qso['TIME_ON'], '%Y%m%d%H%M')
-                time_diff = abs((new_time_on - existing_time_on).total_seconds())
-                if time_diff <= 600:
-                    st.write(f"Duplicate found: {new_qso['CALL']} on {new_qso['BAND']} at {new_qso['QSO_DATE']} {new_qso['TIME_ON']}")
-                    return True
-            except ValueError as e:
-                st.error(f"Error parsing date and time for existing QSO: {qso['CALL']} - {e}")
-                continue
-    return False
-
-# Filter out duplicates from the parsed data
-def filter_duplicates(parsed_data, existing_qsos):
-    unique_qsos = []
-    for qso in parsed_data:
-        if not is_duplicate(qso, existing_qsos):
-            unique_qsos.append(qso)
-    st.write(f"Filtered out {len(parsed_data) - len(unique_qsos)} duplicates.")
-    return unique_qsos
-
-# Convert the parsed data to ADIF format
-def convert_to_adif(parsed_data):
-    adif_lines = []
-    for qso in parsed_data:
-        adif_lines.append(f"<call:{len(qso['CALL'])}>{qso['CALL']} <qso_date:{len(qso['QSO_DATE'])}>{qso['QSO_DATE']} <time_on:{len(qso['TIME_ON'])}>{qso['TIME_ON']} <band:{len(qso['BAND'])}>{qso['BAND']} <eor>")
-    return '\n'.join(adif_lines)
-
 # Convert the Hunter Log into ADIF format
 def convert_hunter_log_to_adif(hunter_log_lines):
     adif_data = []
@@ -90,6 +51,45 @@ def convert_hunter_log_to_adif(hunter_log_lines):
     st.write(f"Converted {len(adif_data)} QSOs to ADIF format.")
     return adif_data
 
+# Filter out duplicates from the parsed data
+def filter_duplicates(parsed_data, existing_qsos):
+    unique_qsos = []
+    for qso in parsed_data:
+        if not is_duplicate(qso, existing_qsos):
+            unique_qsos.append(qso)
+    st.write(f"Filtered out {len(parsed_data) - len(unique_qsos)} duplicates.")
+    return unique_qsos
+
+# Check if a new QSO is a duplicate based on time, call, and band
+def is_duplicate(new_qso, existing_qsos):
+    try:
+        new_time_on = datetime.strptime(new_qso['QSO_DATE'] + new_qso['TIME_ON'], '%Y%m%d%H%M')
+    except ValueError as e:
+        st.error(f"Error parsing date and time for QSO: {new_qso['CALL']} - {e}")
+        return False
+
+    for qso in existing_qsos:
+        if (qso['CALL'] == new_qso['CALL'] and 
+            qso['BAND'] == new_qso['BAND'] and
+            qso['QSO_DATE'] == new_qso['QSO_DATE']):
+            try:
+                existing_time_on = datetime.strptime(qso['QSO_DATE'] + qso['TIME_ON'], '%Y%m%d%H%M')
+                time_diff = abs((new_time_on - existing_time_on).total_seconds())
+                if time_diff <= 600:
+                    st.write(f"Duplicate found: {new_qso['CALL']} on {new_qso['BAND']} at {new_qso['QSO_DATE']} {new_qso['TIME_ON']}")
+                    return True
+            except ValueError as e:
+                st.error(f"Error parsing date and time for existing QSO: {qso['CALL']} - {e}")
+                continue
+    return False
+
+# Convert the parsed data to ADIF format
+def convert_to_adif(parsed_data):
+    adif_lines = []
+    for qso in parsed_data:
+        adif_lines.append(f"<call:{len(qso['CALL'])}>{qso['CALL']} <qso_date:{len(qso['QSO_DATE'])}>{qso['QSO_DATE']} <time_on:{len(qso['TIME_ON'])}>{qso['TIME_ON']} <band:{len(qso['BAND'])}>{qso['BAND']} <eor>")
+    return '\n'.join(adif_lines)
+
 # Streamlit App Interface
 st.title("POTA Hunter ADIF Converter with Duplicate Check")
 
@@ -101,8 +101,10 @@ if st.button("Convert to ADIF"):
         adif_content = uploaded_adif.read().decode("utf-8")
         existing_qsos = parse_adif_file(adif_content)
         
+        # Clean and filter out unnecessary text from the Hunter Log
+        hunter_log_lines = [line for line in new_hunter_log.splitlines() if '\t' in line]  # Only keep lines with tabs, which are QSOs
+        
         # Convert Hunter Log to ADIF format
-        hunter_log_lines = new_hunter_log.splitlines()
         hunter_adif_data = convert_hunter_log_to_adif(hunter_log_lines)
         
         # Parse the newly converted Hunter Log ADIF data
