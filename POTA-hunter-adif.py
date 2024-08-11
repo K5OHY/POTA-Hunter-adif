@@ -2,7 +2,7 @@ import streamlit as st
 import datetime
 from io import StringIO
 
-# Step 1: Parse the QRZ ADIF file and generate keys
+# Step 1: Normalize and parse the QRZ ADIF file to generate keys
 def parse_adif(adif_data):
     existing_qsos = []
     lines = adif_data.strip().splitlines()
@@ -11,14 +11,14 @@ def parse_adif(adif_data):
     for line in lines:
         if line.startswith('<EOR>'):
             if 'CALL' in current_qso and 'QSO_DATE' in current_qso and 'TIME_ON' in current_qso:
-                # Generate a unique key for each QSO
+                # Normalize and generate a unique key for each QSO
                 qso_key = (
-                    current_qso.get('CALL', ''),
-                    current_qso.get('QSO_DATE', ''),
-                    current_qso.get('TIME_ON', ''),
-                    current_qso.get('BAND', ''),
-                    current_qso.get('MODE', ''),
-                    current_qso.get('STATION_CALLSIGN', '')
+                    current_qso.get('CALL', '').strip().lower(),
+                    current_qso.get('QSO_DATE', '').strip(),
+                    current_qso.get('TIME_ON', '').strip(),
+                    current_qso.get('BAND', '').strip().lower(),
+                    current_qso.get('MODE', '').strip().lower(),
+                    current_qso.get('STATION_CALLSIGN', '').strip().lower()
                 )
                 existing_qsos.append(qso_key)
             current_qso = {}
@@ -34,7 +34,7 @@ def parse_adif(adif_data):
 
     return existing_qsos
 
-# Step 2: Parse the log data and generate keys
+# Step 2: Normalize and parse the log data to generate keys
 def clean_and_parse_log_data(log_data):
     lines = log_data.strip().split("\n")
     parsed_data = []
@@ -44,8 +44,8 @@ def clean_and_parse_log_data(log_data):
         if len(lines[i].strip().split()) == 2 and "-" in lines[i] and ":" in lines[i]:
             try:
                 date_time = lines[i].strip().split()
-                qso_date = date_time[0].replace("-", "")
-                time_on = date_time[1].replace(":", "")
+                qso_date = date_time[0].replace("-", "").strip()
+                time_on = date_time[1].replace(":", "").strip()
                 call = lines[i + 1].strip().lower()
                 details = lines[i + 3].strip().split()
 
@@ -53,7 +53,7 @@ def clean_and_parse_log_data(log_data):
                 band = details[1].strip().lower()
                 mode = details[2].strip().replace("(", "").replace(")", "").lower()
 
-                # Generate a unique key for each QSO
+                # Normalize and generate a unique key for each QSO
                 qso_key = (
                     call,
                     qso_date,
@@ -74,7 +74,7 @@ def clean_and_parse_log_data(log_data):
     
     return parsed_data
 
-# Step 3: Check for duplicates using keys
+# Step 3: Check for duplicates using normalized keys
 def is_duplicate_qso(new_qso_key, existing_qsos):
     for existing_qso_key in existing_qsos:
         if new_qso_key == existing_qso_key:
