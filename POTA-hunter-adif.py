@@ -16,7 +16,8 @@ def parse_adif(adif_data):
                     'qso_date': current_qso.get('QSO_DATE', '').strip(),
                     'time_on': current_qso.get('TIME_ON', '').strip(),
                     'band': current_qso.get('BAND', '').strip().lower(),
-                    'mode': current_qso.get('MODE', '').strip().lower()
+                    'mode': current_qso.get('MODE', '').strip().lower(),
+                    'station_callsign': current_qso.get('STATION_CALLSIGN', '').strip().lower(),
                 }
                 existing_qsos.append(qso_entry)
                 st.write(f"ADIF Parsed QSO: {qso_entry}")  # Debugging: Print each parsed QSO
@@ -91,13 +92,15 @@ def is_duplicate_qso(new_qso, existing_qsos):
         st.write(f"Comparing {new_qso['call']} with {existing_qso['call']}")
         st.write(f"Band {new_qso['band']} vs {existing_qso['band']}")
         st.write(f"Mode {new_qso['mode']} vs {existing_qso['mode']}")
+        st.write(f"Station Callsign {new_qso['station_callsign']} vs {existing_qso['station_callsign']}")
         time_difference = abs((new_time - existing_time).total_seconds()) / 60  # Convert to minutes
         st.write(f"Time difference: {time_difference} minutes")
 
         if (
             new_qso['call'] == existing_qso['call'] and
             new_qso['band'] == existing_qso['band'] and
-            new_qso['mode'] == existing_qso['mode']
+            new_qso['mode'] == existing_qso['mode'] and
+            new_qso['station_callsign'] == existing_qso['station_callsign']
         ):
             if time_difference <= 30:  # within 30 minutes
                 st.write(f"Duplicate found: {new_qso}")
