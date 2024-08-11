@@ -1,5 +1,5 @@
 import streamlit as st
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # Parsing the ADIF file to extract necessary fields
 def parse_adif_file(adif_content):
@@ -66,6 +66,30 @@ def convert_to_adif(parsed_data):
         adif_lines.append(f"<call:{len(qso['CALL'])}>{qso['CALL']} <qso_date:{len(qso['QSO_DATE'])}>{qso['QSO_DATE']} <time_on:{len(qso['TIME_ON'])}>{qso['TIME_ON']} <band:{len(qso['BAND'])}>{qso['BAND']} <eor>")
     return '\n'.join(adif_lines)
 
+# Convert the Hunter Log into ADIF format
+def convert_hunter_log_to_adif(hunter_log_lines):
+    adif_data = []
+    for line in hunter_log_lines:
+        parts = line.strip().split('\t')  # Assuming fields are tab-separated
+        if len(parts) >= 8:
+            try:
+                datetime_str = parts[0].strip()  # Date/Time is in the first position
+                datetime_obj = datetime.strptime(datetime_str, '%Y-%m-%d %H:%M')
+                date = datetime_obj.strftime('%Y%m%d')
+                time = datetime_obj.strftime('%H%M')
+
+                call = parts[2].strip()  # Worked call sign is in the third position
+                band = parts[4].strip().lower()  # Band is in the fifth position
+
+                adif_qso = f"<call:{len(call)}>{call} <qso_date:{len(date)}>{date} <time_on:{len(time)}>{time} <band:{len(band)}>{band} <eor>"
+                adif_data.append(adif_qso)
+            except (IndexError, ValueError) as e:
+                st.error(f"Error parsing line: {line} - {e}")
+                continue
+
+    st.write(f"Converted {len(adif_data)} QSOs to ADIF format.")
+    return adif_data
+
 # Streamlit App Interface
 st.title("POTA Hunter ADIF Converter with Duplicate Check")
 
@@ -77,34 +101,12 @@ if st.button("Convert to ADIF"):
         adif_content = uploaded_adif.read().decode("utf-8")
         existing_qsos = parse_adif_file(adif_content)
         
-        # Parsing the new Hunter Log
+        # Convert Hunter Log to ADIF format
         hunter_log_lines = new_hunter_log.splitlines()
-        parsed_data = []
+        hunter_adif_data = convert_hunter_log_to_adif(hunter_log_lines)
         
-        for line in hunter_log_lines:
-            parts = line.split()
-            if len(parts) >= 8:  # Ensure the line has the necessary parts
-                try:
-                    datetime_str = parts[0] + ' ' + parts[1]  # Date and time are in the first two parts
-                    datetime_obj = datetime.strptime(datetime_str, '%Y-%m-%d %H:%M')
-                    date = datetime_obj.strftime('%Y%m%d')
-                    time = datetime_obj.strftime('%H%M')
-                    
-                    call = parts[3].strip()  # Worked call sign is in the 4th position
-                    band = parts[4].strip().lower()  # Band is in the 5th position
-                    
-                    qso_data = {
-                        'CALL': call,
-                        'QSO_DATE': date,
-                        'TIME_ON': time,
-                        'BAND': band,
-                    }
-                    parsed_data.append(qso_data)
-                except (IndexError, ValueError) as e:
-                    st.error(f"Error parsing line: {line} - {e}")
-                    continue
-        
-        st.write(f"Parsed {len(parsed_data)} QSOs from the pasted log.")
+        # Parse the newly converted Hunter Log ADIF data
+        parsed_data = parse_adif_file('\n'.join(hunter_adif_data))
         
         unique_qsos = filter_duplicates(parsed_data, existing_qsos)
         
