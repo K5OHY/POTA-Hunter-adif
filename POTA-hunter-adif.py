@@ -82,7 +82,7 @@ def is_duplicate_qso(new_qso, existing_qsos):
             new_qso['mode'] == existing_qso.get('MODE')):
             
             existing_time = datetime.datetime.strptime(f"{existing_qso['QSO_DATE']} {existing_qso['TIME_ON']}", "%Y%m%d %H%M")
-            if abs((new_time - existing_time).total_seconds()) <= 600:  # within 10 minutes
+            if abs((new_time - existing_time).total_seconds()) <= 1200:  # within 20 minutes
                 return True
     return False
 
@@ -138,6 +138,6 @@ if st.button("Generate ADIF"):
                 mime="text/plain",
             )
         else:
-            st.warning("No valid log data was found. Please check the format of your log.")
+            st.warning("No valid log data was found or all were duplicates.")
     else:
         st.warning("Please paste the log data before generating the ADIF file.")
