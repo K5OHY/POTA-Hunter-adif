@@ -1,135 +1,109 @@
 import streamlit as st
 import pandas as pd
-from io import StringIO
+import io
 from datetime import datetime, timedelta
 
-# Function to parse the QRZ ADIF file into a pandas DataFrame
-def parse_adif_to_df(adif_data):
-    adif_lines = adif_data.strip().splitlines()
-    records = []
-
-    current_qso = {}
-    for line in adif_lines:
-        if line.startswith('<EOR>'):
-            if current_qso:
-                records.append(current_qso)
-            current_qso = {}
-        else:
-            parts = line.split('<')
-            for part in parts:
-                if ':' in part:
-                    key_value = part.split('>', 1)
-                    if len(key_value) == 2:  # Ensure that the split results in two parts
-                        key = key_value[0].split(':')[0].upper().strip()
-                        value = key_value[1].strip().lower()
-                        current_qso[key] = value
-
-    if current_qso:  # Add the last QSO if not yet added
-        records.append(current_qso)
-
-    df = pd.DataFrame(records)
-    return df
-
-# Function to parse the log data into a pandas DataFrame
-def parse_log_to_df(log_data):
-    records = []
+# Function to parse the POTA log
+def parse_pota_log(log_data):
     lines = log_data.strip().split("\n")
+    data = []
+    for i in range(0, len(lines), 4):
+        if i + 3 >= len(lines) or not lines[i].strip().split() or not lines[i+1].strip():
+            continue
+        call, band, mode, _ = lines[i:i+4]
+        data.append({
+            'CALL': call.strip(),
+            'BAND': band.strip(),
+            'MODE': mode.strip(),
+            'QSO_DATE': datetime.now().strftime('%Y%m%d'),
+            'TIME_ON': '0000',  # Assuming all QSOs are at midnight for simplicity
+            'STATION_CALLSIGN': 'YOUR_CALLSIGN'  # Replace with your callsign
+        })
+    return pd.DataFrame(data)
 
-    i = 0
-    while i < len(lines):
-        if len(lines[i].strip().split()) == 2 and "-" in lines[i] and ":" in lines[i]:
-            try:
-                date_time = lines[i].strip().split()
-                qso_date = date_time[0].replace("-", "").strip()
-                time_on = date_time[1].replace(":", "").strip()
-                call = lines[i + 1].strip().lower()
-                details = lines[i + 3].strip().split()
-
-                station_callsign = details[0].strip().lower()
-                band = details[1].strip().lower()
-                mode = details[2].strip().replace("(", "").replace(")", "").lower()
-
-                qso_entry = {
-                    'CALL': call,
-                    'QSO_DATE': qso_date,
-                    'TIME_ON': time_on,
-                    'BAND': band,
-                    'MODE': mode,
-                    'STATION_CALLSIGN': station_callsign
-                }
-                records.append(qso_entry)
-                i += 4
-            except IndexError:
-                i += 1
-                continue
-        else:
-            i += 1
-    
-    df = pd.DataFrame(records)
-    return df
-
-# Function to detect duplicates within a 30-minute window
+# Function to detect duplicates
 def detect_duplicates(log_df, adif_df):
     log_df['QSO_TIME'] = pd.to_datetime(log_df['QSO_DATE'] + ' ' + log_df['TIME_ON'], format='%Y%m%d %H%M')
     adif_df['QSO_TIME'] = pd.to_datetime(adif_df['QSO_DATE'] + ' ' + adif_df['TIME_ON'], format='%Y%m%d %H%M')
 
-    log_df['DUPLICATE'] = False
+    # Create a key for each QSO
+    log_df['QSO_KEY'] = log_df.apply(lambda row: f"{row['CALL']}_{row['BAND']}_{row['MODE']}_{row['STATION_CALLSIGN']}_{row['QSO_TIME'].strftime('%Y%m%d%H%M')}", axis=1)
+    adif_df['QSO_KEY'] = adif_df.apply(lambda row: f"{row['CALL']}_{row['BAND']}_{row['MODE']}_{row['STATION_CALLSIGN']}_{row['QSO_TIME'].strftime('%Y%m%d%H%M')}", axis=1)
 
-    for index, row in log_df.iterrows():
-        potential_duplicates = adif_df[
+    adif_keys = set(adif_df['QSO_KEY'])
+    log_df['DUPLICATE'] = log_df['QSO_KEY'].apply(lambda key: key in adif_keys)
+
+    def is_within_30_mins(row, adif_df):
+        similar_qsos = adif_df[
             (adif_df['CALL'] == row['CALL']) &
             (adif_df['BAND'] == row['BAND']) &
             (adif_df['MODE'] == row['MODE']) &
-            (adif_df['STATION_CALLSIGN'] == row['STATION_CALLSIGN']) &
-            (abs(adif_df['QSO_TIME'] - row['QSO_TIME']) <= timedelta(minutes=30))
+            (adif_df['STATION_CALLSIGN'] == row['STATION_CALLSIGN'])
         ]
-        
-        if not potential_duplicates.empty:
-            log_df.at[index, 'DUPLICATE'] = True
-    
+        if similar_qsos.empty:
+            return False
+        time_diff = abs(similar_qsos['QSO_TIME'] - row['QSO_TIME']).min()
+        return time_diff <= timedelta(minutes=30)
+
+    log_df['DUPLICATE'] = log_df.apply(lambda row: is_within_30_mins(row, adif_df) if not row['DUPLICATE'] else True, axis=1)
+
     return log_df
 
-# Streamlit app interface
-st.title("POTA Log to ADIF Converter with Advanced Duplicate Detection")
+# Function to generate ADIF
+def generate_adif(df):
+    adif_lines = [
+        "<EOH>",
+        "<eor>"
+    ]
+    for _, row in df.iterrows():
+        adif_lines.append(f"<CALL:{row['CALL']}>")
+        adif_lines.append(f"<BAND:{row['BAND']}>")
+        adif_lines.append(f"<MODE:{row['MODE']}>")
+        adif_lines.append(f"<QSO_DATE:{row['QSO_DATE']}>")
+        adif_lines.append(f"<TIME_ON:{row['TIME_ON']}>")
+        adif_lines.append(f"<STATION_CALLSIGN:{row['STATION_CALLSIGN']}>")
+        adif_lines.append("<eor>")
+    return "\n".join(adif_lines)
 
-st.write("Paste your POTA hunters log data below:")
+# Streamlit App
+st.title("POTA Log to ADIF Converter")
 
-log_data = st.text_area("Hunters Log Data", height=300)
+# Input for POTA log
+pota_log = st.text_area("Paste your POTA log here:")
 
-uploaded_adif = st.file_uploader("Upload your existing QRZ ADIF file", type="adi")
-
-if st.button("Generate ADIF"):
-    if log_data:
-        log_df = parse_log_to_df(log_data)
-
-        if uploaded_adif:
-            try:
-                adif_content = StringIO(uploaded_adif.getvalue().decode("utf-8", errors='replace')).read()
-                adif_df = parse_adif_to_df(adif_content)
-            except UnicodeDecodeError:
-                st.error("There was an issue decoding the ADIF file. Please ensure it is encoded in UTF-8.")
-                st.stop()
-
-            # Detect and mark duplicates
-            log_df = detect_duplicates(log_df, adif_df)
-            
-            # Filter out duplicates
-            filtered_df = log_df[log_df['DUPLICATE'] == False]
-
-            if not filtered_df.empty:
-                adif_data = filtered_df.apply(lambda x: f"<CALL:{len(x['CALL'])}>{x['CALL']}<QSO_DATE:{len(x['QSO_DATE'])}>{x['QSO_DATE']}<TIME_ON:{len(x['TIME_ON'])}>{x['TIME_ON']}<BAND:{len(x['BAND'])}>{x['BAND']}<MODE:{len(x['MODE'])}>{x['MODE']}<STATION_CALLSIGN:{len(x['STATION_CALLSIGN'])}>{x['STATION_CALLSIGN']}<EOR>\n", axis=1).sum()
-                
-                st.text_area("ADIF Output", adif_data, height=300)
-
-                st.download_button(
-                    label="Download ADIF",
-                    data=adif_data,
-                    file_name="pota_log_filtered.adi",
-                    mime="text/plain",
-                )
-            else:
-                st.warning("No valid log data was found or all were duplicates.")
-        else:
-            st.warning("Please upload an ADIF file to check against.")
+if st.button("Convert to ADIF"):
+    if not pota_log:
+        st.error("Please paste your POTA log.")
     else:
-        st.warning("Please paste the log data before generating the ADIF file.")
+        log_df = parse_pota_log(pota_log)
+
+        # File upload for existing ADIF
+        uploaded_adif = st.file_uploader("Upload your existing ADIF file", type=["adi"])
+        if uploaded_adif is not None:
+            try:
+                adif_content = io.StringIO(uploaded_adif.getvalue().decode("utf-8", errors='replace')).read()
+                adif_df = pd.read_csv(io.StringIO(adif_content), sep="\n", header=None, names=["ADIF"])
+                adif_df = adif_df[0].str.split(":", expand=True)
+                adif_df.columns = adif_df.iloc[0]
+                adif_df = adif_df[1:].reset_index(drop=True)
+                log_df = detect_duplicates(log_df, adif_df)
+            except Exception as e:
+                st.error(f"Error processing ADIF file: {e}")
+
+        # Filter out duplicates
+        unique_qsos = log_df[~log_df['DUPLICATE']]
+        adif_output = generate_adif(unique_qsos)
+
+        st.subheader("Generated ADIF")
+        st.text_area("ADIF Content", adif_output, height=300)
+
+        # Download button
+        st.download_button(
+            label="Download ADIF",
+            data=adif_output,
+            file_name="pota_log.adif",
+            mime="text/plain"
+        )
+
+        st.write(f"Number of unique QSOs: {len(unique_qsos)}")
+        st.write(f"Number of duplicates removed: {log_df['DUPLICATE'].sum()}")
