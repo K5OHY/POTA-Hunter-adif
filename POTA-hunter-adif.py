@@ -71,14 +71,15 @@ st.title("POTA Log to ADIF Converter")
 # Input for POTA log
 pota_log = st.text_area("Paste your POTA log here:")
 
+# File upload for existing ADIF
+uploaded_adif = st.file_uploader("Upload your existing ADIF file", type=["adi"])
+
 if st.button("Convert to ADIF"):
     if not pota_log:
         st.error("Please paste your POTA log.")
     else:
         log_df = parse_pota_log(pota_log)
 
-        # File upload for existing ADIF
-        uploaded_adif = st.file_uploader("Upload your existing ADIF file", type=["adi"])
         if uploaded_adif is not None:
             try:
                 adif_content = io.StringIO(uploaded_adif.getvalue().decode("utf-8", errors='replace')).read()
